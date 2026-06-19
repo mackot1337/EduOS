@@ -2,7 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-app = FastAPI(title="EduOS API")
+from app.api.v1.endpoints.files import router as files_router
+from app.api.v1.endpoints.academic import router as academic_route
+
+app = FastAPI(title="EduOS API - Inteligentny Organizer Studenta")
 
 app.add_middleware(
     CORSMiddleware,
@@ -11,6 +14,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(files_router, prefix="/api/v1")
+app.include_router(academic_route, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
