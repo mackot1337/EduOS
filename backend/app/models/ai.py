@@ -16,7 +16,7 @@ class FileChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     file_id = Column(Integer, ForeignKey("academic_files.id", ondelete="CASCADE"), nullable=False)
     text_fragment = Column(String, nullable=False) 
-    embedding = Column(Vector(1536), nullable=True)
+    embedding = Column(Vector(768), nullable=True)
 
     file = relationship("AcademicFile", back_populates="chunks")
 
