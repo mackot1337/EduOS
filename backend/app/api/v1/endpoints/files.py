@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import os
 import shutil
+from sqlalchemy.future import select
 
 from app.core.database import get_db
 from app.models.academic import AcademicFile
@@ -103,3 +104,18 @@ async def upload_academic_file(
         },
         "summary": ai_analysis.summary
     }
+
+@router.get("/subject/{subject_id}")
+async def get_subject_files(subject_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(AcademicFile).where(AcademicFile.subject_id == subject_id).order_by(AcademicFile.created_at.desc())
+    result = await db.execute(query)
+    files = result.scalars().all()
+    
+    return [
+        {
+            "id": f.id, 
+            "name": f.name, 
+            "created_at": f.created_at.isoformat() if f.created_at else None
+        } 
+        for f in files
+    ]
