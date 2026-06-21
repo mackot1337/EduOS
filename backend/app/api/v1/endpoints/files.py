@@ -56,6 +56,8 @@ async def upload_academic_file(
 
     ai_analysis = await AIProcessor.analyze_document_content(raw_text)
 
+    db_file.summary = ai_analysis.summary
+
     text_chunks = AIProcessor.chunk_text(raw_text)
     for chunk_text in text_chunks:
         vector = await AIProcessor.generate_embedding(chunk_text)
@@ -115,6 +117,7 @@ async def get_subject_files(subject_id: int, db: AsyncSession = Depends(get_db))
         {
             "id": f.id, 
             "name": f.name, 
+            "summary": f.summary,
             "created_at": f.created_at.isoformat() if f.created_at else None
         } 
         for f in files
