@@ -4,11 +4,12 @@ import React, { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { ArrowLeft, Library, FileText, UploadCloud, BookOpen, Search, Loader2 } from 'lucide-react';
+import { ArrowLeft, Library, FileText, UploadCloud, BookOpen, Search, Loader2, BrainCircuit, ChevronDown } from 'lucide-react';
 
 interface AcademicFile {
   id: number;
   name: string;
+  summary?: string;
   created_at: string;
 }
 
@@ -21,6 +22,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
 
   const [files, setFiles] = useState<AcademicFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedFileId, setExpandedFileId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchFiles();
@@ -45,9 +47,9 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
           <ArrowLeft className="w-4 h-4" /> Powrót do semestrów
         </Link>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
           <div className="flex items-center gap-4">
-            <div className="bg-blue-100 p-4 rounded-2xl">
+            <div className="bg-blue-100 p-4 rounded-2xl shrink-0">
               <Library className="w-8 h-8 text-blue-600" />
             </div>
             <div>
@@ -56,15 +58,15 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 px-5 py-2.5 rounded-xl font-bold transition-colors border border-green-200 shadow-sm">
-              <BookOpen className="w-5 h-5" /> Fiszki
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="flex items-center gap-2 bg-green-50 text-green-700 hover:bg-green-100 px-5 py-2.5 rounded-xl font-bold transition-colors border border-green-200 shadow-sm whitespace-nowrap">
+              <BookOpen className="w-5 h-5" /> Fiszki (Na dziś)
             </Link>
-            <Link href={`/ask?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 px-5 py-2.5 rounded-xl font-bold transition-colors border border-purple-200 shadow-sm">
+            <Link href={`/ask?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 px-5 py-2.5 rounded-xl font-bold transition-colors border border-purple-200 shadow-sm whitespace-nowrap">
               <Search className="w-5 h-5" /> Zapytaj RAG
             </Link>
-            <Link href={`/upload?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 px-5 py-2.5 rounded-xl font-bold transition-colors shadow-sm">
-              <UploadCloud className="w-5 h-5" /> Dodaj materiał
+            <Link href={`/upload?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700 px-5 py-2.5 rounded-xl font-bold transition-colors shadow-sm whitespace-nowrap">
+              <UploadCloud className="w-5 h-5" /> Wgraj plik
             </Link>
           </div>
         </div>
@@ -75,7 +77,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
               <FileText className="w-5 h-5 text-slate-500" /> Wgrane dokumenty
             </h2>
             <span className="text-sm font-bold text-slate-500 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-sm">
-              {files.length} {files.length === 1 ? 'plik' : files.length >= 2 && files.length <= 4 ? 'pliki' : 'plików'}
+              {files.length}
             </span>
           </div>
 
@@ -88,27 +90,54 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
               <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
                 <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-slate-700 mb-2">Brak materiałów</h3>
-                <p className="text-slate-500 mb-6 max-w-md mx-auto">Nie wgrałeś jeszcze żadnych notatek dla tego przedmiotu. Sztuczna inteligencja czeka na dokumenty!</p>
+                <p className="text-slate-500 mb-6 max-w-md mx-auto">Sztuczna inteligencja czeka na dokumenty!</p>
                 <Link href={`/upload?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="inline-flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-xl font-bold transition-colors shadow-sm">
-                  <UploadCloud className="w-5 h-5" /> Wgraj swój pierwszy plik
+                  <UploadCloud className="w-5 h-5" /> Wgraj plik
                 </Link>
               </div>
             ) : (
               <ul className="space-y-4">
                 {files.map((file) => (
-                  <li key={file.id} className="flex items-center justify-between p-5 rounded-2xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all group shadow-sm hover:shadow-md">
-                    <div className="flex items-center gap-4 overflow-hidden">
-                      <div className="bg-blue-100 p-3 rounded-xl text-blue-600 shrink-0">
-                        <FileText className="w-6 h-6" />
+                  <li key={file.id} className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:border-blue-300 transition-all">
+                    
+                    <div className="w-full flex flex-col lg:flex-row lg:items-center justify-between p-4 lg:p-5 hover:bg-blue-50/30 transition-colors">
+                      <button 
+                        onClick={() => setExpandedFileId(expandedFileId === file.id ? null : file.id)}
+                        className="flex-1 flex items-center gap-4 overflow-hidden text-left"
+                      >
+                        <div className="bg-blue-100 p-3 rounded-xl text-blue-600 shrink-0">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                        <span className="font-semibold text-slate-700 text-base md:text-lg truncate">{file.name}</span>
+                      </button>
+
+                      <div className="flex items-center gap-3 mt-4 lg:mt-0 lg:ml-4 shrink-0 justify-end">
+                        <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}&mode=all&fileId=${file.id}`} className="flex items-center gap-2 bg-amber-50 text-amber-700 hover:bg-amber-100 px-3 py-2 rounded-lg font-bold transition-colors border border-amber-200 text-sm whitespace-nowrap">
+                          <BrainCircuit className="w-4 h-4" /> Zakuwanie
+                        </Link>
+                        
+                        {file.created_at && (
+                          <span className="text-sm font-medium text-slate-400 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100 hidden md:block">
+                            {new Date(file.created_at).toLocaleDateString('pl-PL')}
+                          </span>
+                        )}
+                        
+                        <button 
+                          onClick={() => setExpandedFileId(expandedFileId === file.id ? null : file.id)}
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                        >
+                          <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedFileId === file.id ? 'rotate-180' : ''}`} />
+                        </button>
                       </div>
-                      <span className="font-semibold text-slate-700 text-lg truncate group-hover:text-blue-700 transition-colors">
-                        {file.name}
-                      </span>
                     </div>
-                    {file.created_at && (
-                      <span className="text-sm font-medium text-slate-400 group-hover:text-blue-500 transition-colors ml-4 shrink-0 bg-white px-3 py-1 rounded-lg border border-slate-100">
-                        {new Date(file.created_at).toLocaleDateString('pl-PL')}
-                      </span>
+
+                    {expandedFileId === file.id && (
+                      <div className="p-6 bg-slate-50/50 border-t border-slate-100 text-slate-600 animate-in slide-in-from-top-2">
+                        <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">Podsumowanie AI</h4>
+                        <p className="whitespace-pre-line text-sm leading-relaxed">
+                          {file.summary || "Brak wygenerowanego podsumowania. Plik został wgrany przed aktywacją tej funkcji."}
+                        </p>
+                      </div>
                     )}
                   </li>
                 ))}
