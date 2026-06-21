@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -12,6 +12,11 @@ interface SearchResult {
   sources: string[];
 }
 
+interface AcademicFile {
+  id: number;
+  name: string;
+}
+
 export default function SearchPage() {
   const searchParams = useSearchParams();
   const subjectId = searchParams.get('subjectId') || '1';
@@ -21,6 +26,15 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [subjectFiles, setSubjectFiles] = useState<AcademicFile[]>([]);
+  const [selectedFileIds, setSelectedFileIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    api.get(`/files/subject/${subjectId}`).then((res) => {
+      setSubjectFiles(res.data);
+    }).catch(console.error);
+  }, [subjectId]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +48,8 @@ export default function SearchPage() {
       const response = await api.post('/search/ask', {
         query: query,
         subject_id: parseInt(subjectId),
-        limit: 3
+        limit: 3,
+        file_ids: selectedFileIds.length > 0 ? selectedFileIds : undefined
       });
 
       setResult({
@@ -67,6 +82,36 @@ export default function SearchPage() {
           <p className="text-slate-500 text-lg max-w-2xl mx-auto">
             Zadaj dowolne pytanie dotyczące wgranych materiałów dla: <span className="font-semibold text-slate-700">{subjectName}</span>. EduOS przeszuka Twoje dokumenty wektorowo i wygeneruje precyzyjną odpowiedź.
           </p>
+        </div>
+
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Filtruj po plikach (opcjonalnie):</h3>
+          {subjectFiles.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {subjectFiles.map(file => {
+                const isSelected = selectedFileIds.includes(file.id);
+                return (
+                  <button
+                    key={file.id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) setSelectedFileIds(selectedFileIds.filter(id => id !== file.id));
+                      else setSelectedFileIds([...selectedFileIds, file.id]);
+                    }}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
+                      isSelected 
+                        ? 'bg-indigo-100 border-indigo-300 text-indigo-700' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {file.name}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">Brak plików w tym przedmiocie.</p>
+          )}
         </div>
 
         <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 mb-8 relative focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
