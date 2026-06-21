@@ -44,8 +44,12 @@ async def create_semester(semester: SemesterCreate, db: AsyncSession = Depends(g
     new_semester = Semester(**semester.model_dump())
     db.add(new_semester)
     await db.commit()
-    await db.refresh(new_semester)
-    return new_semester
+    
+    query = select(Semester).where(Semester.id == new_semester.id).options(selectinload(Semester.subjects))
+    result = await db.execute(query)
+    loaded_semester = result.scalars().first()
+    
+    return loaded_semester
 
 @router.get("/semesters", response_model=List[SemesterResponse])
 async def get_semesters(db: AsyncSession = Depends(get_db)):
