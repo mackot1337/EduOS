@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from datetime import datetime, timezone
 from pydantic import BaseModel
 
@@ -18,6 +18,9 @@ class FlashcardReviewRequest(BaseModel):
 async def get_due_flashcards(subject_id: int, db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     
+    total_query = select(func.count(Flashcard.id)).where(Flashcard.subject_id == subject_id)
+    total_count = await db.scalar(total_query)
+    
     query = select(Flashcard).where(
         Flashcard.subject_id == subject_id,
         or_(
@@ -30,6 +33,7 @@ async def get_due_flashcards(subject_id: int, db: AsyncSession = Depends(get_db)
     due_flashcards = result.scalars().all()
 
     return {
+        "total_count": total_count or 0,
         "due_count": len(due_flashcards),
         "flashcards": [
             {

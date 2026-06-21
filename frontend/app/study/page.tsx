@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { ArrowLeft, Brain, Check, RefreshCw, X, Eye } from 'lucide-react';
+import { ArrowLeft, Brain, Check, RefreshCw, X, Eye, FileQuestion } from 'lucide-react';
 
 interface Flashcard {
   id: number;
@@ -14,6 +14,7 @@ interface Flashcard {
 
 export default function StudyPage() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -26,10 +27,13 @@ export default function StudyPage() {
   const fetchDueFlashcards = async () => {
     try {
       const response = await api.get('/flashcards/due/1');
-      setFlashcards(response.data.flashcards);
-      setLoading(false);
+      setFlashcards(response.data?.flashcards || []);
+      setTotalCount(response.data?.total_count || 0);
     } catch (error) {
       console.error("Błąd podczas pobierania fiszek:", error);
+      setFlashcards([]);
+      setTotalCount(0);
+    } finally {
       setLoading(false);
     }
   };
@@ -80,8 +84,20 @@ export default function StudyPage() {
           )}
         </div>
 
-        {flashcards.length === 0 || finished ? (
-          <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-200 text-center">
+        {totalCount === 0 ? (
+          <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-200 text-center animate-in fade-in duration-500">
+            <FileQuestion className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">Brak fiszek w bazie</h2>
+            <p className="text-slate-500 mb-6">
+              Nie wygenerowałeś jeszcze żadnych fiszek dla tego przedmiotu. Przejdź do panelu AI, aby przetworzyć swoje materiały na fiszki.
+            </p>
+            <Link href="/upload" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-colors">
+              Przejdź do generowania
+            </Link>
+          </div>
+
+        ) : flashcards.length === 0 || finished ? (
+          <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-200 text-center animate-in fade-in duration-500">
             <Check className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Świetna robota!</h2>
             <p className="text-slate-500 mb-6">Przerobiłeś wszystkie zaplanowane na dziś fiszki z tego przedmiotu. Wróć tu jutro, aby utrwalić wiedzę.</p>
@@ -89,11 +105,10 @@ export default function StudyPage() {
               Wróć na stronę główną
             </Link>
           </div>
+
         ) : (
           <div className="space-y-6">
-            
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden min-h-[300px] flex flex-col relative transition-all">
-              
               <div className="p-8 flex-1 flex flex-col justify-center items-center text-center">
                 <span className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Pytanie</span>
                 <h2 className="text-2xl font-medium text-slate-800 leading-relaxed">
@@ -148,10 +163,8 @@ export default function StudyPage() {
                 </button>
               </div>
             )}
-
           </div>
         )}
-
       </div>
     </div>
   );
