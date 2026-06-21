@@ -4,6 +4,7 @@ from sqlalchemy.future import select
 from sqlalchemy import or_, func
 from datetime import datetime, timezone
 from pydantic import BaseModel
+from typing import Optional
 
 from app.core.database import get_db
 from app.models.ai import Flashcard
@@ -42,6 +43,30 @@ async def get_due_flashcards(subject_id: int, db: AsyncSession = Depends(get_db)
                 "odpowiedz": fc.answer,
                 "poziom": fc.level
             } for fc in due_flashcards
+        ]
+    }
+
+@router.get("/all/{subject_id}")
+async def get_all_flashcards(subject_id: int, file_id: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    query = select(Flashcard).where(Flashcard.subject_id == subject_id)
+    
+    if file_id:
+        query = query.where(Flashcard.file_id == file_id)
+        
+    query = query.order_by(Flashcard.id)
+    result = await db.execute(query)
+    all_flashcards = result.scalars().all()
+
+    return {
+        "total_count": len(all_flashcards),
+        "due_count": len(all_flashcards),
+        "flashcards": [
+            {
+                "id": fc.id,
+                "pytanie": fc.question,
+                "odpowiedz": fc.answer,
+                "poziom": fc.level
+            } for fc in all_flashcards
         ]
     }
 
