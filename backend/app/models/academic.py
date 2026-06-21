@@ -38,6 +38,7 @@ class AcademicFile(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)          
     file_path = Column(String, nullable=False)  
+    summary = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     subject = relationship("Subject", back_populates="files")
