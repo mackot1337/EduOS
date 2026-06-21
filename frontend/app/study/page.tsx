@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { ArrowLeft, Brain, Check, RefreshCw, X, Eye, FileQuestion } from 'lucide-react';
 
@@ -13,6 +14,10 @@ interface Flashcard {
 }
 
 export default function StudyPage() {
+  const searchParams = useSearchParams();
+  const subjectId = searchParams.get('subjectId') || '1';
+  const subjectName = searchParams.get('name') || 'Wybrany Przedmiot';
+
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -22,11 +27,11 @@ export default function StudyPage() {
 
   useEffect(() => {
     fetchDueFlashcards();
-  }, []);
+  }, [subjectId]);
 
   const fetchDueFlashcards = async () => {
     try {
-      const response = await api.get('/flashcards/due/1');
+      const response = await api.get(`/flashcards/due/${subjectId}`);
       setFlashcards(response.data?.flashcards || []);
       setTotalCount(response.data?.total_count || 0);
     } catch (error) {
@@ -65,20 +70,23 @@ export default function StudyPage() {
     );
   }
 
+  const subjectDashboardUrl = `/subject/${subjectId}?name=${encodeURIComponent(subjectName)}`;
+
   return (
     <div className="min-h-screen bg-slate-50 p-8 md:p-16 font-sans">
       <div className="max-w-2xl mx-auto">
         
-        <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 transition-colors text-sm font-medium">
-          <ArrowLeft className="w-4 h-4" /> Powrót do menu
+        <Link href={subjectDashboardUrl} className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 transition-colors text-sm font-medium">
+          <ArrowLeft className="w-4 h-4" /> Powrót do przedmiotu
         </Link>
 
         <div className="mb-8">
           <h1 className="text-4xl font-extrabold text-slate-900 flex items-center gap-3">
             <Brain className="text-green-500 w-10 h-10" /> Inteligentne Powtórki
           </h1>
+          <p className="text-slate-500 mt-2 font-medium">{subjectName}</p>
           {!finished && flashcards.length > 0 && (
-            <p className="text-slate-500 mt-2">
+            <p className="text-slate-500 mt-1">
               Karta {currentIndex + 1} z {flashcards.length}
             </p>
           )}
@@ -91,7 +99,7 @@ export default function StudyPage() {
             <p className="text-slate-500 mb-6">
               Nie wygenerowałeś jeszcze żadnych fiszek dla tego przedmiotu. Przejdź do panelu AI, aby przetworzyć swoje materiały na fiszki.
             </p>
-            <Link href="/upload" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-colors">
+            <Link href={`/upload?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}`} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-colors">
               Przejdź do generowania
             </Link>
           </div>
@@ -101,8 +109,8 @@ export default function StudyPage() {
             <Check className="w-16 h-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Świetna robota!</h2>
             <p className="text-slate-500 mb-6">Przerobiłeś wszystkie zaplanowane na dziś fiszki z tego przedmiotu. Wróć tu jutro, aby utrwalić wiedzę.</p>
-            <Link href="/" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-colors">
-              Wróć na stronę główną
+            <Link href={subjectDashboardUrl} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl transition-colors">
+              Wróć do przedmiotu
             </Link>
           </div>
 

@@ -2,13 +2,17 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { UploadCloud, ArrowLeft, RefreshCw, FileText, CheckCircle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function UploadPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const subjectId = searchParams.get('subjectId') || '1';
+  const subjectName = searchParams.get('name') || 'Wybrany Przedmiot';
+
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +48,7 @@ export default function UploadPage() {
     formData.append("file", file);
 
     try {
-      const response = await api.post("/files/upload?subject_id=1", formData, {
+      const response = await api.post(`/files/upload?subject_id=${subjectId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -72,8 +76,8 @@ export default function UploadPage() {
     <div className="min-h-screen bg-slate-50 p-8 md:p-16 font-sans">
       <div className="max-w-3xl mx-auto">
         
-        <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 transition-colors text-sm font-medium">
-          <ArrowLeft className="w-4 h-4" /> Powrót do menu
+        <Link href={`/subject/${subjectId}?name=${encodeURIComponent(subjectName)}`} className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-8 transition-colors text-sm font-medium">
+          <ArrowLeft className="w-4 h-4" /> Powrót do przedmiotu
         </Link>
 
         <div className="mb-8">
@@ -81,7 +85,7 @@ export default function UploadPage() {
             <UploadCloud className="text-blue-600 w-10 h-10" /> Baza Wiedzy AI
           </h1>
           <p className="text-slate-500 mt-2 text-lg">
-            Wgraj materiały z wykładów (PDF, DOCX) dla przedmiotu <span className="font-semibold text-slate-700">Bazy Danych</span>. Nasz silnik AI automatycznie wyciągnie z nich esencję.
+            Wgraj materiały z wykładów (PDF, DOCX) dla przedmiotu <span className="font-semibold text-slate-700">{subjectName}</span>. Nasz silnik AI automatycznie wyciągnie z nich esencję.
           </p>
         </div>
 
