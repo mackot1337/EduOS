@@ -17,6 +17,8 @@ export default function StudyPage() {
   const searchParams = useSearchParams();
   const subjectId = searchParams.get('subjectId') || '1';
   const subjectName = searchParams.get('name') || 'Wybrany Przedmiot';
+  const mode = searchParams.get('mode');
+  const fileId = searchParams.get('fileId');
 
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -27,11 +29,15 @@ export default function StudyPage() {
 
   useEffect(() => {
     fetchDueFlashcards();
-  }, [subjectId]);
+  }, [subjectId, mode, fileId]);
 
   const fetchDueFlashcards = async () => {
     try {
-      const response = await api.get(`/flashcards/due/${subjectId}`);
+      const endpoint = mode === 'all' 
+        ? `/flashcards/all/${subjectId}${fileId ? `?file_id=${fileId}` : ''}` 
+        : `/flashcards/due/${subjectId}`;
+        
+      const response = await api.get(endpoint);
       setFlashcards(response.data?.flashcards || []);
       setTotalCount(response.data?.total_count || 0);
     } catch (error) {
@@ -82,7 +88,8 @@ export default function StudyPage() {
 
         <div className="mb-8">
           <h1 className="text-4xl font-extrabold text-slate-900 flex items-center gap-3">
-            <Brain className="text-green-500 w-10 h-10" /> Inteligentne Powtórki
+            <Brain className="text-green-500 w-10 h-10" /> 
+            {mode === 'all' ? 'Zakuwanie (Wszystko)' : 'Inteligentne Powtórki'}
           </h1>
           <p className="text-slate-500 mt-2 font-medium">{subjectName}</p>
           {!finished && flashcards.length > 0 && (
