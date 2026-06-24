@@ -66,3 +66,21 @@ class AcademicFile(Base):
     
     chunks = relationship("FileChunk", back_populates="file", cascade="all, delete-orphan")
     flashcards = relationship("Flashcard", back_populates="file", cascade="all, delete-orphan")
+
+class TaskStatus(str, enum.Enum):
+    TODO = "TODO"
+    IN_PROGRESS = "IN_PROGRESS"
+    DONE = "DONE"
+
+class Task(Base):
+    __tablename__ = "tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    due_date = Column(Date, nullable=True)
+    status = Column(String, default="TODO")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    subject = relationship("Subject", back_populates="tasks")

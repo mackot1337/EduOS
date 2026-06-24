@@ -1,14 +1,8 @@
 import enum
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from app.core.database import Base
-
-class TaskStatus(str, enum.Enum):
-    TODO = "TODO"
-    IN_PROGRESS = "IN_PROGRESS"
-    DONE = "DONE"
-
 
 class FileChunk(Base):
     __tablename__ = "file_chunks"
@@ -35,16 +29,3 @@ class Flashcard(Base):
 
     subject = relationship("Subject", back_populates="flashcards")
     file = relationship("AcademicFile", back_populates="flashcards")
-
-
-class Task(Base):
-    __tablename__ = "tasks"
-
-    id = Column(Integer, primary_key=True, index=True)
-    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
-    title = Column(String, nullable=False)          
-    description = Column(String, nullable=True)
-    deadline = Column(DateTime, nullable=True)       
-    status = Column(Enum(TaskStatus), default=TaskStatus.TODO, nullable=False)
-
-    subject = relationship("Subject", back_populates="tasks")
