@@ -7,7 +7,7 @@ from datetime import date
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.models.academic import Semester, Subject 
+from app.models.academic import Semester, Subject, DayOfWeek, TimeBlock
 
 router = APIRouter(prefix="/academic", tags=["Academic Organization"])
 
@@ -15,6 +15,9 @@ class SubjectBase(BaseModel):
     name: str
     code: Optional[str] = None
     instructor: Optional[str] = None
+    day_of_week: Optional[DayOfWeek] = None
+    time_block: Optional[TimeBlock] = None
+    room: Optional[str] = None
 
 class SubjectCreate(SubjectBase):
     pass
