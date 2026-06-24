@@ -1,8 +1,25 @@
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey
+import enum
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
 from app.core.database import Base
+
+class DayOfWeek(str, enum.Enum):
+    MONDAY = "Poniedziałek"
+    TUESDAY = "Wtorek"
+    WEDNESDAY = "Środa"
+    THURSDAY = "Czwartek"
+    FRIDAY = "Piątek"
+
+class TimeBlock(str, enum.Enum):
+    B1 = "7:30 - 9:00"
+    B2 = "9:15 - 10:45"
+    B3 = "11:15 - 12:45"
+    B4 = "13:15 - 14:45"
+    B5 = "15:15 - 16:45"
+    B6 = "17:05 - 18:35"
+    B7 = "18:55 - 20:25"
 
 class Semester(Base):
     __tablename__ = "semesters"
@@ -23,6 +40,10 @@ class Subject(Base):
     name = Column(String, nullable=False)         
     code = Column(String, nullable=True)  
     instructor = Column(String, nullable=True)      
+
+    day_of_week = Column(SQLEnum(DayOfWeek), nullable=True)
+    time_block = Column(SQLEnum(TimeBlock), nullable=True)
+    room = Column(String, nullable=True)
 
     semester = relationship("Semester", back_populates="subjects")
     
