@@ -3,8 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, ConfigDict
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import List, Optional
+import httpx
+import icalendar
 
 from app.core.database import get_db
 from app.models.academic import Semester, Subject, DayOfWeek, TimeBlock, Task
@@ -42,6 +44,9 @@ class SemesterResponse(SemesterBase):
     
     model_config = ConfigDict(from_attributes=True)
 
+class UsosImportRequest(BaseModel):
+    url: str
+
 @router.post("/semesters", response_model=SemesterResponse, status_code=status.HTTP_201_CREATED)
 async def create_semester(semester: SemesterCreate, db: AsyncSession = Depends(get_db)):
     new_semester = Semester(**semester.model_dump())
@@ -74,6 +79,82 @@ async def create_subject(semester_id: int, subject: SubjectCreate, db: AsyncSess
     await db.commit()
     await db.refresh(new_subject)
     return new_subject
+
+def map_time_to_block(start_time: time) -> TimeBlock:
+    hour = start_time.hour
+    minute = start_time.minute
+    
+    if hour == 7: return TimeBlock.B1
+    if hour == 9: return TimeBlock.B2 
+    if hour == 11: return TimeBlock.B3 
+    if hour == 13: return TimeBlock.B4 
+    if hour == 15: return TimeBlock.B5
+    if hour == 17: return TimeBlock.B6 
+    if hour == 18 or hour == 19: return TimeBlock.B7
+    return None
+
+def map_weekday_to_day(weekday: int) -> DayOfWeek:
+    days = [
+        DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, 
+        DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
+    ]
+    if 0 <= weekday <= 4:
+        return days[weekday]
+    return None
+
+@router.post("/semesters/{semester_id}/import-usos")
+async def import_from_usos(semester_id: int, req: UsosImportRequest, db: AsyncSession = Depends(get_db)):
+    query = select(Semester).where(Semester.id == semester_id)
+    result = await db.execute(query)
+    semester = result.scalars().first()
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semestr nie znaleziony")
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(req.url)
+            response.raise_for_status()
+            calendar_data = response.content
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Nie udało się pobrać kalendarza: {str(e)}")
+
+    cal = icalendar.Calendar.from_ical(calendar_data)
+    
+    processed_subjects = set()
+    added_count = 0
+
+    for component in cal.walk('VEVENT'):
+        summary = str(component.get('summary', ''))
+        location = str(component.get('location', ''))
+        dtstart = component.get('dtstart').dt
+        
+        if not isinstance(dtstart, datetime):
+            continue
+            
+        day_enum = map_weekday_to_day(dtstart.weekday())
+        time_enum = map_time_to_block(dtstart.time())
+        
+        if not day_enum or not time_enum:
+            continue
+            
+        unique_key = (summary, day_enum, time_enum)
+        
+        if unique_key not in processed_subjects:
+            processed_subjects.add(unique_key)
+            
+            new_subject = Subject(
+                semester_id=semester_id,
+                name=summary,
+                room=location if location else None,
+                day_of_week=day_enum,
+                time_block=time_enum
+            )
+            db.add(new_subject)
+            added_count += 1
+            
+    await db.commit()
+    
+    return {"status": "ok", "imported_count": added_count}
 
 class TaskBase(BaseModel):
     title: str
