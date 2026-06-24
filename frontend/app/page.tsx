@@ -73,6 +73,28 @@ export default function Home() {
   const [newSubTime, setNewSubTime] = useState("");
   const [newSubRoom, setNewSubRoom] = useState("");
 
+  const [showUsosImport, setShowUsosImport] = useState(false);
+  const [usosUrl, setUsosUrl] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImportUsos = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeSemId || !usosUrl) return;
+    setIsImporting(true);
+    try {
+      await api.post(`/academic/semesters/${activeSemId}/import-usos`, { url: usosUrl });
+      setShowUsosImport(false);
+      setUsosUrl("");
+      fetchSemesters();
+      alert("Zajęcia zaimportowane pomyślnie!");
+    } catch (error) {
+      console.error(error);
+      alert("Błąd podczas importu. Sprawdź link z USOSa.");
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   useEffect(() => {
     fetchSemesters();
   }, []);
@@ -191,17 +213,52 @@ export default function Home() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
               <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                 <Calendar className="w-6 h-6 text-blue-500" /> Plan zajęć: {activeSemester?.name}
               </h2>
-              <button 
-                onClick={() => setShowSubForm(!showSubForm)}
-                className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 text-sm"
-              >
-                <Plus className="w-4 h-4" /> Dodaj zajęcia do planu
-              </button>
+              
+              <div className="flex flex-wrap gap-2">
+                <button 
+                  onClick={() => { setShowUsosImport(!showUsosImport); setShowSubForm(false); }}
+                  className="bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 text-sm"
+                >
+                  Importuj z USOS
+                </button>
+                <button 
+                  onClick={() => { setShowSubForm(!showSubForm); setShowUsosImport(false); }}
+                  className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 text-sm"
+                >
+                  <Plus className="w-4 h-4" /> Dodaj ręcznie
+                </button>
+              </div>
             </div>
+
+            {showUsosImport && (
+              <form onSubmit={handleImportUsos} className="bg-purple-50 p-6 rounded-2xl border-2 border-purple-200 border-dashed animate-in fade-in mb-6">
+                <h3 className="font-bold text-purple-900 mb-2">Automatyczny import planu z USOS</h3>
+                <p className="text-sm text-purple-700 mb-4">
+                  Skopiuj link <b>iCalendar</b> z kalendarza w USOSweb i wklej go poniżej.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <input 
+                    type="url" 
+                    placeholder="https://apps.usos.pwr.edu.pl/services/tt/upcoming_ical?..." 
+                    value={usosUrl} 
+                    onChange={(e) => setUsosUrl(e.target.value)} 
+                    className="flex-1 p-3 bg-white border border-purple-200 rounded-lg outline-none focus:border-purple-500 text-sm" 
+                    required 
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={isImporting}
+                    className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium whitespace-nowrap flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isImporting ? <><Loader2 className="w-4 h-4 animate-spin" /> Pobieranie...</> : "Pobierz plan"}
+                  </button>
+                </div>
+              </form>
+            )}
 
             {showSubForm && (
               <form onSubmit={handleAddSubject} className="bg-blue-50 p-6 rounded-2xl border-2 border-blue-200 border-dashed animate-in fade-in">
