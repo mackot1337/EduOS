@@ -3,11 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from pydantic import BaseModel, ConfigDict
-from datetime import date
+from datetime import date, datetime
 from typing import List, Optional
 
 from app.core.database import get_db
-from app.models.academic import Semester, Subject, DayOfWeek, TimeBlock
+from app.models.academic import Semester, Subject, DayOfWeek, TimeBlock, Task
 
 router = APIRouter(prefix="/academic", tags=["Academic Organization"])
 
@@ -74,3 +74,65 @@ async def create_subject(semester_id: int, subject: SubjectCreate, db: AsyncSess
     await db.commit()
     await db.refresh(new_subject)
     return new_subject
+
+class TaskBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[date] = None
+    status: Optional[str] = "TODO"
+
+class TaskCreate(TaskBase):
+    pass
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[date] = None
+    status: Optional[str] = None
+
+class TaskResponse(TaskBase):
+    id: int
+    subject_id: int
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+@router.post("/semesters/{subject_id}/tasks", response_model=TaskResponse)
+async def create_task(subject_id: int, task: TaskCreate, db: AsyncSession = Depends(get_db)):
+    new_task = Task(**task.model_dump(), subject_id=subject_id)
+    db.add(new_task)
+    await db.commit()
+    await db.refresh(new_task)
+    return new_task
+
+@router.get("/subjects/{subject_id}/tasks", response_model=List[TaskResponse])
+async def get_tasks(subject_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(Task).where(Task.subject_id == subject_id).order_by(Task.due_date.asc().nulls_last())
+    result = await db.execute(query)
+    return result.scalars().all()
+
+@router.patch("/tasks/{task_id}", response_model=TaskResponse)
+async def update_task(task_id: int, task_update: TaskUpdate, db: AsyncSession = Depends(get_db)):
+    query = select(Task).where(Task.id == task_id)
+    result = await db.execute(query)
+    task = result.scalars().first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Zadanie nie znalezione")
+        
+    update_data = task_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(task, key, value)
+        
+    await db.commit()
+    await db.refresh(task)
+    return task
+
+@router.delete("/tasks/{task_id}")
+async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(Task).where(Task.id == task_id)
+    result = await db.execute(query)
+    task = result.scalars().first()
+    if task:
+        await db.delete(task)
+        await db.commit()
+    return {"status": "ok"}

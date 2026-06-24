@@ -6,8 +6,8 @@ import shutil
 from sqlalchemy.future import select
 
 from app.core.database import get_db
-from app.models.academic import AcademicFile
-from app.models.ai import FileChunk, Flashcard, Task, TaskStatus
+from app.models.academic import AcademicFile, Task, TaskStatus
+from app.models.ai import FileChunk, Flashcard
 from app.services.ai_processor import AIProcessor
 
 router = APIRouter(prefix="/files", tags=["Files & AI Processing"])
@@ -78,7 +78,7 @@ async def upload_academic_file(
             subject_id=subject_id,
             title=dl.title,
             description=f"[Auto-wykryte przez AI z pliku {file.filename}]: {dl.description}",
-            deadline=deadline_dt,
+            due_date=deadline_dt,
             status=TaskStatus.TODO
         )
         db.add(db_task)
