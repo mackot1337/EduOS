@@ -4,7 +4,6 @@ import React, { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-// DODANO MapPin i Clock do importów
 import { ArrowLeft, Library, FileText, UploadCloud, BookOpen, Search, Loader2, BrainCircuit, ChevronDown, MapPin, Clock } from 'lucide-react';
 
 interface AcademicFile {
@@ -20,7 +19,6 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
   
   const searchParams = useSearchParams();
   const subjectName = searchParams.get('name') || "Wybrany Przedmiot";
-  // NOWE: Pobieranie parametrów planu zajęć z URL
   const subjectDay = searchParams.get('day');
   const subjectTime = searchParams.get('time');
   const subjectRoom = searchParams.get('room');
@@ -48,7 +46,6 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
     <main className="flex min-h-screen flex-col p-8 md:p-16 bg-slate-50 font-sans">
       <div className="max-w-5xl mx-auto w-full flex flex-col gap-8">
         
-        {/* ZMIENIONO: Napis powrotu */}
         <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium w-fit">
           <ArrowLeft className="w-4 h-4" /> Powrót do planu zajęć
         </Link>
@@ -61,7 +58,6 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{subjectName}</h1>
               
-              {/* NOWE: Wyświetlanie dnia, godziny i sali (jeśli są) */}
               <div className="flex items-center gap-3 mt-2 text-sm font-medium text-slate-500">
                 {subjectDay && subjectTime ? (
                   <span className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-md">
@@ -96,7 +92,6 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* ... reszta pliku zostaje DOKŁADNIE taka sama jak Twoja wgrana ... */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
             <h2 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
