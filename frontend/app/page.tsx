@@ -34,6 +34,28 @@ interface Semester {
   subjects: Subject[];
 }
 
+const getSubjectColors = (name: string) => {
+  const upperName = name.toUpperCase();
+  
+  if (upperName.includes('(W)') || upperName.includes('WYKŁAD') || upperName.includes(' WYK')) {
+    return "bg-red-50 hover:bg-red-600 border-red-200 hover:border-red-600 text-red-900 group-hover:text-white";
+  }
+  if (upperName.includes('(L)') || upperName.includes('LAB') || upperName.includes('LABORATORIUM')) {
+    return "bg-blue-50 hover:bg-blue-600 border-blue-200 hover:border-blue-600 text-blue-900 group-hover:text-white";
+  }
+  if (upperName.includes('(C)') || upperName.includes('(Ć)') || upperName.includes('(ĆW)') || upperName.includes('ĆWICZENIA')) {
+    return "bg-green-50 hover:bg-green-600 border-green-200 hover:border-green-600 text-green-900 group-hover:text-white";
+  }
+  if (upperName.includes('(P)') || upperName.includes('PROJEKT') || upperName.includes(' PROJ')) {
+    return "bg-purple-50 hover:bg-purple-600 border-purple-200 hover:border-purple-600 text-purple-900 group-hover:text-white";
+  }
+  if (upperName.includes('(S)') || upperName.includes('SEM') || upperName.includes('SEMINARIUM')) {
+    return "bg-amber-50 hover:bg-amber-500 border-amber-200 hover:border-amber-500 text-amber-900 group-hover:text-white";
+  }
+  
+  return "bg-slate-50 hover:bg-slate-700 border-slate-200 hover:border-slate-700 text-slate-800 group-hover:text-white";
+};
+
 export default function Home() {
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,7 +245,6 @@ export default function Home() {
                       </td>
                       
                       {DAYS_OF_WEEK.map((day) => {
-                        // Pobieramy przedmioty przypisane do tej komórki siatki
                         const cellSubjects = activeSemester?.subjects.filter(
                           (s) => s.day_of_week === day && s.time_block === time
                         ) || [];
@@ -235,13 +256,13 @@ export default function Home() {
                                 <Link 
                                   href={`/subject/${subject.id}?name=${encodeURIComponent(subject.name)}`} 
                                   key={subject.id}
-                                  className="group block bg-blue-50 hover:bg-blue-600 border border-blue-200 hover:border-blue-600 p-3 rounded-lg transition-all text-center cursor-pointer"
+                                  className={`group block p-3 rounded-lg border transition-all text-center cursor-pointer ${getSubjectColors(subject.name)}`}
                                 >
-                                  <p className="font-bold text-blue-900 group-hover:text-white transition-colors line-clamp-2">
+                                  <p className="font-bold group-hover:text-white transition-colors line-clamp-2">
                                     {subject.name}
                                   </p>
                                   {subject.room && (
-                                    <p className="text-xs text-blue-700 group-hover:text-blue-100 mt-1 flex items-center justify-center gap-1">
+                                    <p className="text-xs group-hover:text-blue-100 mt-1 flex items-center justify-center gap-1">
                                       <MapPin className="w-3 h-3" /> {subject.room}
                                     </p>
                                   )}
