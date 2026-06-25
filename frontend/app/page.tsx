@@ -3,7 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Calendar, Plus, GraduationCap, Loader2, MapPin, Clock, BookOpen } from 'lucide-react';
+import { 
+  Calendar, Plus, GraduationCap, Loader2, MapPin, Clock, 
+  BookOpen, Trash2, Edit2, X, Check 
+} from 'lucide-react';
 
 const DAYS_OF_WEEK = ["Poniedziałek", "Wtorek", "Środa", "Czwartek", "Piątek"] as const;
 const TIME_BLOCKS = [
@@ -62,6 +65,7 @@ export default function Home() {
   
   const [activeSemId, setActiveSemId] = useState<number | null>(null);
 
+  // Formularze dodawania
   const [showSemForm, setShowSemForm] = useState(false);
   const [newSemName, setNewSemName] = useState("");
   const [newSemStart, setNewSemStart] = useState("");
@@ -76,6 +80,107 @@ export default function Home() {
   const [showUsosImport, setShowUsosImport] = useState(false);
   const [usosUrl, setUsosUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+
+  // Stany edycji przedmiotów
+  const [editingSubId, setEditingSubId] = useState<number | null>(null);
+  const [editSubName, setEditSubName] = useState("");
+  
+  // Stany edycji semestru
+  const [editingSemId, setEditingSemId] = useState<number | null>(null);
+  const [editSemName, setEditSemName] = useState("");
+  const [editSemStart, setEditSemStart] = useState("");
+  const [editSemEnd, setEditSemEnd] = useState("");
+
+  useEffect(() => {
+    fetchSemesters();
+  }, []);
+
+  const fetchSemesters = async () => {
+    try {
+      const response = await api.get('/academic/semesters');
+      const fetchedSemesters = response.data;
+      setSemesters(fetchedSemesters);
+      
+      if (fetchedSemesters.length > 0 && (!activeSemId || !fetchedSemesters.find((s: Semester) => s.id === activeSemId))) {
+        setActiveSemId(fetchedSemesters[0].id);
+      }
+    } catch (error) {
+      console.error("Błąd pobierania semestrów:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (type: 'semester' | 'subject', id: number) => {
+    const isSemester = type === 'semester';
+    if (!confirm(`Czy na pewno chcesz usunąć ten ${isSemester ? 'semestr (usunie to też wszystkie przypisane pliki i zadania!)' : 'przedmiot'}?`)) return;
+    
+    try {
+      await api.delete(`/academic/${isSemester ? 'semesters' : 'subjects'}/${id}`);
+      fetchSemesters();
+    } catch (error) {
+      console.error("Błąd usuwania:", error);
+      alert("Nie udało się usunąć elementu.");
+    }
+  };
+
+  const handleUpdateSubject = async (id: number) => {
+    if (!editSubName.trim()) return;
+    try {
+      await api.patch(`/academic/subjects/${id}`, { name: editSubName });
+      setEditingSubId(null);
+      fetchSemesters();
+    } catch (error) {
+      alert("Błąd podczas aktualizacji przedmiotu.");
+    }
+  };
+
+  const handleUpdateSemester = async (id: number) => {
+    if (!editSemName.trim()) return;
+    try {
+      await api.patch(`/academic/semesters/${id}`, { 
+        name: editSemName,
+        start_date: editSemStart || null,
+        end_date: editSemEnd || null
+      });
+      setEditingSemId(null);
+      fetchSemesters();
+    } catch (error) {
+      alert("Błąd podczas aktualizacji semestru.");
+    }
+  };
+
+  // --- DRAG AND DROP (PRZECIĄGNIJ I UPUŚĆ) ---
+  const handleDragStart = (e: React.DragEvent, subjectId: number) => {
+    e.dataTransfer.setData("subjectId", subjectId.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Musi być wywołane, żeby `onDrop` zadziałało
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetDay: string | null, targetTimeBlock: string | null) => {
+    e.preventDefault();
+    const subjectIdStr = e.dataTransfer.getData("subjectId");
+    if (!subjectIdStr) return;
+    
+    const subjectId = parseInt(subjectIdStr, 10);
+    
+    try {
+      // Optymistycznie można by zaktualizować stan, tu dla pewności odpytujemy API
+      await api.patch(`/academic/subjects/${subjectId}`, { 
+        day_of_week: targetDay, 
+        time_block: targetTimeBlock 
+      });
+      fetchSemesters();
+    } catch (error) {
+      console.error(error);
+      alert("Nie udało się przenieść przedmiotu.");
+    }
+  };
+  // ------------------------------------------
 
   const handleImportUsos = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,26 +197,6 @@ export default function Home() {
       alert("Błąd podczas importu. Sprawdź link z USOSa.");
     } finally {
       setIsImporting(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSemesters();
-  }, []);
-
-  const fetchSemesters = async () => {
-    try {
-      const response = await api.get('/academic/semesters');
-      const fetchedSemesters = response.data;
-      setSemesters(fetchedSemesters);
-      
-      if (fetchedSemesters.length > 0 && !activeSemId) {
-        setActiveSemId(fetchedSemesters[0].id);
-      }
-    } catch (error) {
-      console.error("Błąd pobierania semestrów:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -160,6 +245,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 p-8 md:p-16 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
+        {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -169,27 +255,85 @@ export default function Home() {
             <p className="text-lg text-slate-500">Twój interaktywny plan zajęć.</p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row items-center gap-4">
             {semesters.length > 0 && (
-              <select 
-                value={activeSemId || ''} 
-                onChange={(e) => setActiveSemId(Number(e.target.value))}
-                className="p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:border-blue-500 font-medium text-slate-700"
-              >
-                {semesters.map(sem => (
-                  <option key={sem.id} value={sem.id}>{sem.name}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1 bg-slate-50 border border-slate-300 rounded-xl p-1.5 shadow-sm">
+                {editingSemId === activeSemId ? (
+                  <div className="flex flex-col gap-2 p-2 w-full md:w-auto">
+                    <input 
+                      autoFocus
+                      value={editSemName} 
+                      onChange={e => setEditSemName(e.target.value)}
+                      placeholder="Nazwa semestru"
+                      className="p-1.5 border rounded border-blue-400 outline-none text-sm w-full font-medium"
+                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateSemester(activeSemId!)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="date" 
+                        value={editSemStart} 
+                        onChange={e => setEditSemStart(e.target.value)} 
+                        className="p-1 border rounded outline-none text-xs text-slate-600"
+                        title="Data rozpoczęcia"
+                      />
+                      <span className="text-slate-400 text-xs">-</span>
+                      <input 
+                        type="date" 
+                        value={editSemEnd} 
+                        onChange={e => setEditSemEnd(e.target.value)} 
+                        className="p-1 border rounded outline-none text-xs text-slate-600"
+                        title="Data zakończenia"
+                      />
+                      <button onClick={() => handleUpdateSemester(activeSemId!)} className="text-green-600 hover:bg-green-100 p-1.5 rounded transition-colors"><Check className="w-4 h-4"/></button>
+                      <button onClick={() => setEditingSemId(null)} className="text-slate-500 hover:bg-slate-200 p-1.5 rounded transition-colors"><X className="w-4 h-4"/></button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center">
+                    <select 
+                      value={activeSemId || ''} 
+                      onChange={(e) => setActiveSemId(Number(e.target.value))}
+                      className="p-1.5 bg-transparent outline-none font-medium text-slate-700 cursor-pointer"
+                    >
+                      {semesters.map(sem => (
+                        <option key={sem.id} value={sem.id}>{sem.name}</option>
+                      ))}
+                    </select>
+                    <div className="flex items-center border-l border-slate-300 pl-1 ml-1 gap-1">
+                      <button 
+                        onClick={() => { 
+                          setEditingSemId(activeSemId); 
+                          setEditSemName(activeSemester?.name || ""); 
+                          setEditSemStart(activeSemester?.start_date || "");
+                          setEditSemEnd(activeSemester?.end_date || "");
+                        }} 
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors" 
+                        title="Edytuj semestr"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete('semester', activeSemId!)} 
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" 
+                        title="Usuń cały semestr"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             <button 
               onClick={() => setShowSemForm(!showSemForm)}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-medium transition-colors flex items-center gap-2"
+              className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-medium transition-colors flex items-center gap-2 w-full md:w-auto justify-center"
             >
               <Plus className="w-5 h-5" /> Nowy Semestr
             </button>
           </div>
         </div>
 
+        {/* FORMS */}
         {showSemForm && (
           <form onSubmit={handleAddSemester} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
             <h3 className="font-semibold text-slate-800 mb-4">Nowy Semestr</h3>
@@ -284,6 +428,7 @@ export default function Home() {
               </form>
             )}
 
+            {/* TIMETABLE */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 border-b border-slate-200">
@@ -307,23 +452,67 @@ export default function Home() {
                         ) || [];
 
                         return (
-                          <td key={`${day}-${time}`} className="p-2 border-r border-slate-100 align-top min-h-[100px]">
+                          <td 
+                            key={`${day}-${time}`} 
+                            className="p-2 border-r border-slate-100 align-top min-h-[100px]"
+                            onDragOver={handleDragOver}
+                            onDrop={(e) => handleDrop(e, day, time)}
+                          >
                             <div className="flex flex-col gap-2 h-full min-h-[80px]">
                               {cellSubjects.map(subject => (
-                                <Link 
-                                  href={`/subject/${subject.id}?name=${encodeURIComponent(subject.name)}`} 
+                                <div 
                                   key={subject.id}
-                                  className={`group block p-3 rounded-lg border transition-all text-center cursor-pointer ${getSubjectColors(subject.name)}`}
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, subject.id)}
+                                  className={`relative group rounded-lg border transition-all text-center cursor-move ${getSubjectColors(subject.name)}`}
+                                  title="Chwyć i upuść, aby przenieść"
                                 >
-                                  <p className="font-bold group-hover:text-white transition-colors line-clamp-2">
-                                    {subject.name}
-                                  </p>
-                                  {subject.room && (
-                                    <p className="text-xs group-hover:text-blue-100 mt-1 flex items-center justify-center gap-1">
-                                      <MapPin className="w-3 h-3" /> {subject.room}
-                                    </p>
+                                  {editingSubId === subject.id ? (
+                                    <div className="p-3 flex flex-col gap-2 cursor-default" draggable="false" onDragStart={(e) => e.preventDefault()}>
+                                      <input 
+                                        autoFocus
+                                        value={editSubName} 
+                                        onChange={(e) => setEditSubName(e.target.value)}
+                                        className="w-full p-1 text-sm text-slate-900 border border-blue-400 rounded outline-none"
+                                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject(subject.id)}
+                                      />
+                                      <div className="flex justify-center gap-2">
+                                        <button onClick={() => handleUpdateSubject(subject.id)} className="p-1 bg-green-500 hover:bg-green-600 text-white rounded"><Check className="w-3 h-3"/></button>
+                                        <button onClick={() => setEditingSubId(null)} className="p-1 bg-slate-400 hover:bg-slate-500 text-white rounded"><X className="w-3 h-3"/></button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {/* LINK PRZENOSZĄCY DO PRZEDMIOTU */}
+                                      <Link href={`/subject/${subject.id}?name=${encodeURIComponent(subject.name)}`} className="block p-3">
+                                        <p className="font-bold group-hover:text-white transition-colors line-clamp-2">
+                                          {subject.name}
+                                        </p>
+                                        {subject.room && (
+                                          <p className="text-xs group-hover:text-blue-100 mt-1 flex items-center justify-center gap-1">
+                                            <MapPin className="w-3 h-3" /> {subject.room}
+                                          </p>
+                                        )}
+                                      </Link>
+                                      
+                                      {/* WISZĄCE PRZYCISKI AKCJI Z ABSOLUTE I Z-INDEX */}
+                                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/95 p-1 rounded shadow-sm border border-slate-200 z-10 cursor-pointer">
+                                        <button 
+                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingSubId(subject.id); setEditSubName(subject.name); }} 
+                                          className="text-slate-500 hover:text-blue-600 p-0.5" title="Edytuj"
+                                        >
+                                          <Edit2 className="w-3 h-3"/>
+                                        </button>
+                                        <button 
+                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete('subject', subject.id); }} 
+                                          className="text-slate-500 hover:text-red-600 p-0.5" title="Usuń"
+                                        >
+                                          <Trash2 className="w-3 h-3"/>
+                                        </button>
+                                      </div>
+                                    </>
                                   )}
-                                </Link>
+                                </div>
                               ))}
                             </div>
                           </td>
@@ -335,24 +524,68 @@ export default function Home() {
               </table>
             </div>
 
-            {activeSemester?.subjects.some(s => !s.day_of_week || !s.time_block) && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold text-slate-700 flex items-center gap-2 mb-4">
-                  <BookOpen className="w-5 h-5" /> Przedmioty niesklasyfikowane w planie
-                </h3>
-                <div className="flex flex-wrap gap-3">
+            {/* UNASSIGNED SUBJECTS - TERAZ MOŻNA TU UPUŚCIĆ PRZEDMIOT */}
+            <div 
+              className="mt-8 bg-slate-100/50 p-4 rounded-xl border-2 border-dashed border-transparent hover:border-slate-300 transition-colors"
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, null, null)}
+              title="Upuść tutaj przedmiot, aby usunąć go z planu"
+            >
+              <h3 className="text-lg font-semibold text-slate-700 flex items-center gap-2 mb-4">
+                <BookOpen className="w-5 h-5" /> Przedmioty niesklasyfikowane w planie
+              </h3>
+              
+              {activeSemester?.subjects.some(s => !s.day_of_week || !s.time_block) ? (
+                <div className="flex flex-wrap gap-3 min-h-[40px]">
                   {activeSemester.subjects.filter(s => !s.day_of_week || !s.time_block).map(sub => (
-                    <Link 
-                      href={`/subject/${sub.id}?name=${encodeURIComponent(sub.name)}`} 
+                    <div 
                       key={sub.id} 
-                      className="bg-white border border-slate-200 px-4 py-2 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-slate-700 font-medium"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, sub.id)}
+                      className="group relative cursor-move bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors text-slate-700 font-medium flex items-center"
                     >
-                      {sub.name}
-                    </Link>
+                      {editingSubId === sub.id ? (
+                        <div className="p-2 flex items-center gap-2 cursor-default" draggable="false" onDragStart={(e) => e.preventDefault()}>
+                          <input 
+                            autoFocus
+                            value={editSubName} 
+                            onChange={(e) => setEditSubName(e.target.value)}
+                            className="p-1 border border-blue-400 rounded outline-none text-sm w-40"
+                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject(sub.id)}
+                          />
+                          <button onClick={() => handleUpdateSubject(sub.id)} className="text-green-600 hover:bg-green-100 p-1 rounded"><Check className="w-4 h-4"/></button>
+                          <button onClick={() => setEditingSubId(null)} className="text-slate-500 hover:bg-slate-200 p-1 rounded"><X className="w-4 h-4"/></button>
+                        </div>
+                      ) : (
+                        <>
+                          <Link href={`/subject/${sub.id}?name=${encodeURIComponent(sub.name)}`} className="block px-4 py-2">
+                            {sub.name}
+                          </Link>
+                          {/* Akcje z prawej strony pigułki na hover */}
+                          <div className="hidden group-hover:flex items-center gap-1 pr-2 border-l border-slate-200 pl-2 py-1 cursor-pointer">
+                            <button 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingSubId(sub.id); setEditSubName(sub.name); }} 
+                              className="text-slate-400 hover:text-blue-600 transition-colors" title="Edytuj"
+                            >
+                              <Edit2 className="w-3.5 h-3.5"/>
+                            </button>
+                            <button 
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete('subject', sub.id); }} 
+                              className="text-slate-400 hover:text-red-600 transition-colors" title="Usuń"
+                            >
+                              <Trash2 className="w-3.5 h-3.5"/>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-sm text-slate-400 italic">Brak. Możesz przeciągnąć przedmiot z tabeli tutaj, aby zdjąć go z planu.</p>
+              )}
+            </div>
+            
           </div>
         )}
       </div>
