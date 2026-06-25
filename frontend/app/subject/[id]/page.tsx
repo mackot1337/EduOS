@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { 
   ArrowLeft, Library, FileText, UploadCloud, BookOpen, Search, Loader2, 
   BrainCircuit, MapPin, Clock, Plus, GripVertical, Trash2, 
-  CheckCircle2, CircleDashed, X, AlignLeft, Edit2, Check
+  CheckCircle2, CircleDashed, X, AlignLeft, Edit2, Check, Download
 } from 'lucide-react';
 
 interface AcademicFile {
@@ -169,6 +169,42 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
       setIsEditingFile(false);
     } catch (error) {
       alert("Błąd podczas zmiany nazwy pliku.");
+    }
+  };
+
+const handleDownloadFile = async () => {
+    if (!selectedFile) return;
+    try {
+      const response = await api.get(`/files/${selectedFile.id}/download`, {
+        responseType: 'blob', 
+      });
+      
+      const disposition = response.headers['content-disposition'];
+      let filename = selectedFile.name;
+      
+      if (disposition) {
+        const filenameStarMatch = disposition.match(/filename\*=utf-8''([^;\n]*)/i);
+        const filenameMatch = disposition.match(/filename="([^"]*)"/i);
+        
+        if (filenameStarMatch && filenameStarMatch[1]) {
+          filename = decodeURIComponent(filenameStarMatch[1]);
+        } else if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Błąd pobierania:", error);
+      alert("Nie udało się pobrać pliku.");
     }
   };
 
@@ -461,13 +497,18 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
-                  <button onClick={() => handleDeleteFile(selectedFile.id)} className="flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition-colors w-full sm:w-auto justify-center">
-                    <Trash2 className="w-4 h-4" /> Usuń trwale z serwera
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
+                  <button onClick={() => handleDeleteFile(selectedFile.id)} className="flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl font-medium transition-colors w-full sm:w-auto justify-center">
+                    <Trash2 className="w-4 h-4" /> Usuń trwale
                   </button>
-                  <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}&mode=all&fileId=${selectedFile.id}`} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-5 py-2.5 rounded-xl font-bold transition-colors w-full sm:w-auto justify-center shadow-sm">
-                    <BrainCircuit className="w-4 h-4" /> Zakuwaj z tego pliku
-                  </Link>
+                  <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
+                    <button onClick={handleDownloadFile} className="flex items-center gap-2 text-sm text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-5 py-2.5 rounded-xl font-bold transition-colors w-full sm:w-auto justify-center shadow-sm">
+                      <Download className="w-4 h-4" /> Pobierz plik
+                    </button>
+                    <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}&mode=all&fileId=${selectedFile.id}`} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-5 py-2.5 rounded-xl font-bold transition-colors w-full sm:w-auto justify-center shadow-sm">
+                      <BrainCircuit className="w-4 h-4" /> Zakuwaj z AI
+                    </Link>
+                  </div>
                 </div>
               </>
             ) : (
