@@ -1,12 +1,12 @@
 "use client";
 
-import React, { use, useState, useEffect } from 'react';
+import React, { use, useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { 
   ArrowLeft, Library, FileText, UploadCloud, BookOpen, Search, Loader2, 
-  BrainCircuit, MapPin, Clock, Plus, GripVertical, Trash2, 
+  BrainCircuit, ChevronDown, MapPin, Clock, Plus, GripVertical, Trash2, 
   CheckCircle2, CircleDashed, X, AlignLeft, Edit2, Check, Download
 } from 'lucide-react';
 
@@ -26,7 +26,7 @@ interface Task {
   status: 'TODO' | 'IN_PROGRESS' | 'DONE';
 }
 
-export default function SubjectDashboard({ params }: { params: Promise<{ id: string }> }) {
+function SubjectContent({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const subjectId = resolvedParams.id;
   
@@ -172,7 +172,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
     }
   };
 
-const handleDownloadFile = async () => {
+  const handleDownloadFile = async () => {
     if (!selectedFile) return;
     try {
       const response = await api.get(`/files/${selectedFile.id}/download`, {
@@ -216,7 +216,7 @@ const handleDownloadFile = async () => {
   };
 
   return (
-    <main className="flex min-h-screen flex-col p-8 md:p-16 bg-slate-50 font-sans">
+    <div className="flex min-h-screen flex-col p-8 md:p-16 bg-slate-50 font-sans">
       <div className="max-w-6xl mx-auto w-full flex flex-col gap-8">
         
         <Link href="/" className="inline-flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium w-fit">
@@ -539,7 +539,7 @@ const handleDownloadFile = async () => {
         </div>
       )}
 
-    </main>
+    </div>
   );
 }
 
@@ -571,5 +571,17 @@ function TaskCard({ task, onDragStart, onDelete, onView }: { task: Task, onDragS
         <Trash2 className="w-4 h-4" />
       </button>
     </div>
+  );
+}
+
+export default function SubjectDashboard({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    }>
+      <SubjectContent params={params} />
+    </Suspense>
   );
 }

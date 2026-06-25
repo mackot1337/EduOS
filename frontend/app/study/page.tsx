@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -16,7 +16,7 @@ interface Flashcard {
   poziom: number;
 }
 
-export default function StudyPage() {
+function StudyContent() {
   const searchParams = useSearchParams();
   const subjectId = searchParams.get('subjectId') || '1';
   const subjectName = searchParams.get('name') || 'Wybrany Przedmiot';
@@ -82,7 +82,7 @@ export default function StudyPage() {
     }
   };
 
-const handleCreateFlashcard = async (e: React.FormEvent) => {
+  const handleCreateFlashcard = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const payload: any = {
@@ -90,7 +90,6 @@ const handleCreateFlashcard = async (e: React.FormEvent) => {
         answer: newAnswer
       };
 
-      // Jeśli jesteśmy w trybie konkretnego pliku, dopinamy jego ID do fiszki
       if (fileId) {
         payload.file_id = parseInt(fileId);
       }
@@ -384,5 +383,17 @@ const handleCreateFlashcard = async (e: React.FormEvent) => {
       )}
 
     </div>
+  );
+}
+
+export default function StudyPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    }>
+      <StudyContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -17,7 +17,7 @@ interface AcademicFile {
   name: string;
 }
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const subjectId = searchParams.get('subjectId') || '1';
   const subjectName = searchParams.get('name') || 'Wybrany Przedmiot';
@@ -185,5 +185,17 @@ export default function SearchPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }

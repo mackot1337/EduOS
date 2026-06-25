@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { UploadCloud, ArrowLeft, RefreshCw, FileText, CheckCircle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-export default function UploadPage() {
+function UploadContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get('subjectId') || '1';
@@ -178,5 +178,17 @@ export default function UploadPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    }>
+      <UploadContent />
+    </Suspense>
   );
 }
