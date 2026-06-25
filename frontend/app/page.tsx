@@ -39,22 +39,18 @@ interface Semester {
 
 const getSubjectColors = (name: string) => {
   const upperName = name.toUpperCase();
-  
-  if (upperName.includes('(W)') || upperName.includes('WYKŁAD') || upperName.includes(' WYK')) {
-    return "bg-red-50 hover:bg-red-600 border-red-200 hover:border-red-600 text-red-900 group-hover:text-white";
-  }
-  if (upperName.includes('(L)') || upperName.includes('LAB') || upperName.includes('LABORATORIUM')) {
-    return "bg-blue-50 hover:bg-blue-600 border-blue-200 hover:border-blue-600 text-blue-900 group-hover:text-white";
-  }
-  if (upperName.includes('(C)') || upperName.includes('(Ć)') || upperName.includes('(ĆW)') || upperName.includes('ĆWICZENIA')) {
-    return "bg-green-50 hover:bg-green-600 border-green-200 hover:border-green-600 text-green-900 group-hover:text-white";
-  }
-  if (upperName.includes('(P)') || upperName.includes('PROJEKT') || upperName.includes(' PROJ')) {
-    return "bg-purple-50 hover:bg-purple-600 border-purple-200 hover:border-purple-600 text-purple-900 group-hover:text-white";
-  }
-  if (upperName.includes('(S)') || upperName.includes('SEM') || upperName.includes('SEMINARIUM')) {
-    return "bg-amber-50 hover:bg-amber-500 border-amber-200 hover:border-amber-500 text-amber-900 group-hover:text-white";
-  }
+
+  const isWyk = /(?:\s|^|\()(W|WYK|WYKŁAD)(?:\s|$|\))/.test(upperName) || /^[A-Z0-9]+W\s/.test(upperName);
+  const isLab = /(?:\s|^|\()(L|LAB|LABORATORIUM)(?:\s|$|\))/.test(upperName) || /^[A-Z0-9]+L\s/.test(upperName);
+  const isCw = /(?:\s|^|\()(C|Ć|ĆW|ĆWICZENIA)(?:\s|$|\))/.test(upperName) || /^[A-Z0-9]+[CĆ]\s/.test(upperName);
+  const isProj = /(?:\s|^|\()(P|PROJ|PROJEKT)(?:\s|$|\))/.test(upperName) || /^[A-Z0-9]+P\s/.test(upperName);
+  const isSem = /(?:\s|^|\()(S|SEM|SEMINARIUM)(?:\s|$|\))/.test(upperName) || /^[A-Z0-9]+S\s/.test(upperName);
+
+  if (isWyk) return "bg-red-50 hover:bg-red-600 border-red-200 hover:border-red-600 text-red-900 group-hover:text-white";
+  if (isLab) return "bg-blue-50 hover:bg-blue-600 border-blue-200 hover:border-blue-600 text-blue-900 group-hover:text-white";
+  if (isCw) return "bg-green-50 hover:bg-green-600 border-green-200 hover:border-green-600 text-green-900 group-hover:text-white";
+  if (isProj) return "bg-purple-50 hover:bg-purple-600 border-purple-200 hover:border-purple-600 text-purple-900 group-hover:text-white";
+  if (isSem) return "bg-amber-50 hover:bg-amber-500 border-amber-200 hover:border-amber-500 text-amber-900 group-hover:text-white";
   
   return "bg-slate-50 hover:bg-slate-700 border-slate-200 hover:border-slate-700 text-slate-800 group-hover:text-white";
 };
@@ -65,7 +61,6 @@ export default function Home() {
   
   const [activeSemId, setActiveSemId] = useState<number | null>(null);
 
-  // Formularze dodawania
   const [showSemForm, setShowSemForm] = useState(false);
   const [newSemName, setNewSemName] = useState("");
   const [newSemStart, setNewSemStart] = useState("");
@@ -81,11 +76,10 @@ export default function Home() {
   const [usosUrl, setUsosUrl] = useState("");
   const [isImporting, setIsImporting] = useState(false);
 
-  // Stany edycji przedmiotów
   const [editingSubId, setEditingSubId] = useState<number | null>(null);
   const [editSubName, setEditSubName] = useState("");
+  const [editSubRoom, setEditSubRoom] = useState("");
   
-  // Stany edycji semestru
   const [editingSemId, setEditingSemId] = useState<number | null>(null);
   const [editSemName, setEditSemName] = useState("");
   const [editSemStart, setEditSemStart] = useState("");
@@ -127,7 +121,10 @@ export default function Home() {
   const handleUpdateSubject = async (id: number) => {
     if (!editSubName.trim()) return;
     try {
-      await api.patch(`/academic/subjects/${id}`, { name: editSubName });
+      await api.patch(`/academic/subjects/${id}`, { 
+        name: editSubName,
+        room: editSubRoom.trim() || null
+      });
       setEditingSubId(null);
       fetchSemesters();
     } catch (error) {
@@ -150,14 +147,13 @@ export default function Home() {
     }
   };
 
-  // --- DRAG AND DROP (PRZECIĄGNIJ I UPUŚĆ) ---
   const handleDragStart = (e: React.DragEvent, subjectId: number) => {
     e.dataTransfer.setData("subjectId", subjectId.toString());
     e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault(); // Musi być wywołane, żeby `onDrop` zadziałało
+    e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   };
 
@@ -169,7 +165,6 @@ export default function Home() {
     const subjectId = parseInt(subjectIdStr, 10);
     
     try {
-      // Optymistycznie można by zaktualizować stan, tu dla pewności odpytujemy API
       await api.patch(`/academic/subjects/${subjectId}`, { 
         day_of_week: targetDay, 
         time_block: targetTimeBlock 
@@ -180,7 +175,6 @@ export default function Home() {
       alert("Nie udało się przenieść przedmiotu.");
     }
   };
-  // ------------------------------------------
 
   const handleImportUsos = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,7 +239,6 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 p-8 md:p-16 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* HEADER */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -333,7 +326,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* FORMS */}
         {showSemForm && (
           <form onSubmit={handleAddSemester} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in slide-in-from-top-4">
             <h3 className="font-semibold text-slate-800 mb-4">Nowy Semestr</h3>
@@ -428,7 +420,6 @@ export default function Home() {
               </form>
             )}
 
-            {/* TIMETABLE */}
             <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm bg-white">
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 border-b border-slate-200">
@@ -474,6 +465,14 @@ export default function Home() {
                                         value={editSubName} 
                                         onChange={(e) => setEditSubName(e.target.value)}
                                         className="w-full p-1 text-sm text-slate-900 border border-blue-400 rounded outline-none"
+                                        placeholder="Nazwa przedmiotu"
+                                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject(subject.id)}
+                                      />
+                                      <input 
+                                        value={editSubRoom} 
+                                        onChange={(e) => setEditSubRoom(e.target.value)}
+                                        className="w-full p-1 text-sm text-slate-900 border border-blue-400 rounded outline-none"
+                                        placeholder="Sala (np. D-1, s. 312)"
                                         onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject(subject.id)}
                                       />
                                       <div className="flex justify-center gap-2">
@@ -483,7 +482,6 @@ export default function Home() {
                                     </div>
                                   ) : (
                                     <>
-                                      {/* LINK PRZENOSZĄCY DO PRZEDMIOTU */}
                                       <Link href={`/subject/${subject.id}?name=${encodeURIComponent(subject.name)}`} className="block p-3">
                                         <p className="font-bold group-hover:text-white transition-colors line-clamp-2">
                                           {subject.name}
@@ -495,10 +493,15 @@ export default function Home() {
                                         )}
                                       </Link>
                                       
-                                      {/* WISZĄCE PRZYCISKI AKCJI Z ABSOLUTE I Z-INDEX */}
                                       <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 bg-white/95 p-1 rounded shadow-sm border border-slate-200 z-10 cursor-pointer">
                                         <button 
-                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingSubId(subject.id); setEditSubName(subject.name); }} 
+                                          onClick={(e) => { 
+                                            e.preventDefault(); 
+                                            e.stopPropagation(); 
+                                            setEditingSubId(subject.id); 
+                                            setEditSubName(subject.name); 
+                                            setEditSubRoom(subject.room || ""); 
+                                          }} 
                                           className="text-slate-500 hover:text-blue-600 p-0.5" title="Edytuj"
                                         >
                                           <Edit2 className="w-3 h-3"/>
@@ -524,7 +527,6 @@ export default function Home() {
               </table>
             </div>
 
-            {/* UNASSIGNED SUBJECTS - TERAZ MOŻNA TU UPUŚCIĆ PRZEDMIOT */}
             <div 
               className="mt-8 bg-slate-100/50 p-4 rounded-xl border-2 border-dashed border-transparent hover:border-slate-300 transition-colors"
               onDragOver={handleDragOver}
@@ -551,6 +553,14 @@ export default function Home() {
                             value={editSubName} 
                             onChange={(e) => setEditSubName(e.target.value)}
                             className="p-1 border border-blue-400 rounded outline-none text-sm w-40"
+                            placeholder="Nazwa"
+                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject(sub.id)}
+                          />
+                          <input 
+                            value={editSubRoom} 
+                            onChange={(e) => setEditSubRoom(e.target.value)}
+                            className="p-1 border border-blue-400 rounded outline-none text-sm w-24"
+                            placeholder="Sala"
                             onKeyDown={(e) => e.key === 'Enter' && handleUpdateSubject(sub.id)}
                           />
                           <button onClick={() => handleUpdateSubject(sub.id)} className="text-green-600 hover:bg-green-100 p-1 rounded"><Check className="w-4 h-4"/></button>
@@ -561,10 +571,15 @@ export default function Home() {
                           <Link href={`/subject/${sub.id}?name=${encodeURIComponent(sub.name)}`} className="block px-4 py-2">
                             {sub.name}
                           </Link>
-                          {/* Akcje z prawej strony pigułki na hover */}
                           <div className="hidden group-hover:flex items-center gap-1 pr-2 border-l border-slate-200 pl-2 py-1 cursor-pointer">
                             <button 
-                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditingSubId(sub.id); setEditSubName(sub.name); }} 
+                              onClick={(e) => { 
+                                e.preventDefault(); 
+                                e.stopPropagation(); 
+                                setEditingSubId(sub.id); 
+                                setEditSubName(sub.name); 
+                                setEditSubRoom(sub.room || "");
+                              }} 
                               className="text-slate-400 hover:text-blue-600 transition-colors" title="Edytuj"
                             >
                               <Edit2 className="w-3.5 h-3.5"/>
