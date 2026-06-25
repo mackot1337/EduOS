@@ -122,3 +122,32 @@ async def get_subject_files(subject_id: int, db: AsyncSession = Depends(get_db))
         } 
         for f in files
     ]
+
+@router.patch("/{file_id}")
+async def update_file(file_id: int, data: dict, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(AcademicFile).where(AcademicFile.id == file_id))
+    file_obj = result.scalars().first()
+    if not file_obj:
+        raise HTTPException(status_code=404, detail="Plik nie istnieje")
+    
+    for key, value in data.items():
+        if hasattr(file_obj, key):
+            setattr(file_obj, key, value)
+            
+    await db.commit()
+    return {"message": "Zaktualizowano plik"}
+
+@router.delete("/{file_id}")
+async def delete_file(file_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(AcademicFile).where(AcademicFile.id == file_id))
+    file_obj = result.scalars().first()
+    if not file_obj:
+        raise HTTPException(status_code=404, detail="Plik nie istnieje")
+        
+    if hasattr(file_obj, 'file_path') and file_obj.file_path:
+        if os.path.exists(file_obj.file_path):
+            os.remove(file_obj.file_path)
+            
+    await db.delete(file_obj)
+    await db.commit()
+    return {"message": "Plik usunięty z bazy i z dysku"}
