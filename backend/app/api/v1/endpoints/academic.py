@@ -217,3 +217,79 @@ async def delete_task(task_id: int, db: AsyncSession = Depends(get_db)):
         await db.delete(task)
         await db.commit()
     return {"status": "ok"}
+
+class SemesterUpdate(BaseModel):
+    name: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+class SubjectUpdate(BaseModel):
+    name: Optional[str] = None
+    code: Optional[str] = None
+    instructor: Optional[str] = None
+    day_of_week: Optional[DayOfWeek] = None
+    time_block: Optional[TimeBlock] = None
+    room: Optional[str] = None
+
+@router.patch("/semesters/{semester_id}", response_model=SemesterResponse)
+async def update_semester(semester_id: int, semester_update: SemesterUpdate, db: AsyncSession = Depends(get_db)):
+    query = select(Semester).where(Semester.id == semester_id).options(selectinload(Semester.subjects))
+    result = await db.execute(query)
+    semester = result.scalars().first()
+    
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semestr nie znaleziony")
+        
+    update_data = semester_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(semester, key, value)
+        
+    await db.commit()
+    await db.refresh(semester)
+    return semester
+
+@router.delete("/semesters/{semester_id}")
+async def delete_semester(semester_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(Semester).where(Semester.id == semester_id)
+    result = await db.execute(query)
+    semester = result.scalars().first()
+    
+    if not semester:
+        raise HTTPException(status_code=404, detail="Semestr nie znaleziony")
+        
+    await db.delete(semester)
+    await db.commit()
+    # Kaskadowe usuwanie usunie też powiązane przedmioty, pliki i zadania!
+    return {"status": "ok", "message": "Semestr usunięty"}
+
+
+
+@router.patch("/subjects/{subject_id}", response_model=SubjectResponse)
+async def update_subject(subject_id: int, subject_update: SubjectUpdate, db: AsyncSession = Depends(get_db)):
+    query = select(Subject).where(Subject.id == subject_id)
+    result = await db.execute(query)
+    subject = result.scalars().first()
+    
+    if not subject:
+        raise HTTPException(status_code=404, detail="Przedmiot nie znaleziony")
+        
+    update_data = subject_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(subject, key, value)
+        
+    await db.commit()
+    await db.refresh(subject)
+    return subject
+
+@router.delete("/subjects/{subject_id}")
+async def delete_subject(subject_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(Subject).where(Subject.id == subject_id)
+    result = await db.execute(query)
+    subject = result.scalars().first()
+    
+    if not subject:
+        raise HTTPException(status_code=404, detail="Przedmiot nie znaleziony")
+        
+    await db.delete(subject)
+    await db.commit()
+    return {"status": "ok", "message": "Przedmiot usunięty"}
