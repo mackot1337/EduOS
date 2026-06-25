@@ -145,7 +145,7 @@ async def import_from_usos(semester_id: int, req: UsosImportRequest, db: AsyncSe
             new_subject = Subject(
                 semester_id=semester_id,
                 name=summary,
-                room=location if location else None,
+                room=None,
                 day_of_week=day_enum,
                 time_block=time_enum
             )
