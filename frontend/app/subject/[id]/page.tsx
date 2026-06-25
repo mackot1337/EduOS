@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { 
   ArrowLeft, Library, FileText, UploadCloud, BookOpen, Search, Loader2, 
-  BrainCircuit, ChevronDown, MapPin, Clock, Plus, GripVertical, Trash2, 
+  BrainCircuit, MapPin, Clock, Plus, GripVertical, Trash2, 
   CheckCircle2, CircleDashed, X, AlignLeft, Edit2, Check
 } from 'lucide-react';
 
@@ -39,14 +39,16 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
   const [files, setFiles] = useState<AcademicFile[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedFileId, setExpandedFileId] = useState<number | null>(null);
 
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '' });
-  
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isEditingTask, setIsEditingTask] = useState(false);
   const [editTaskData, setEditTaskData] = useState({ title: '', description: '', due_date: '' });
+
+  const [selectedFile, setSelectedFile] = useState<AcademicFile | null>(null);
+  const [isEditingFile, setIsEditingFile] = useState(false);
+  const [editFileName, setEditFileName] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -71,9 +73,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
     e.dataTransfer.setData("taskId", taskId.toString());
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
 
   const handleDrop = async (e: React.DragEvent, newStatus: Task['status']) => {
     e.preventDefault();
@@ -82,11 +82,9 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
     const taskId = parseInt(taskIdStr);
 
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-
     try {
       await api.patch(`/academic/tasks/${taskId}`, { status: newStatus });
     } catch (error) {
-      console.error("Błąd zmiany statusu", error);
       fetchData();
     }
   };
@@ -98,10 +96,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
       setNewTask({ title: '', description: '', due_date: '' });
       setShowTaskForm(false);
       fetchData();
-    } catch (error) {
-      console.error(error);
-      alert("Błąd dodawania zadania.");
-    }
+    } catch (error) { alert("Błąd dodawania zadania."); }
   };
 
   const handleDeleteTask = async (taskId: number) => {
@@ -113,23 +108,19 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
         setSelectedTask(null);
         setIsEditingTask(false);
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
   };
 
   const handleUpdateTaskDetails = async () => {
     if (!selectedTask || !editTaskData.title.trim()) return;
-    
     try {
       const payload = {
         title: editTaskData.title,
         description: editTaskData.description,
         due_date: editTaskData.due_date || null
       };
-
       await api.patch(`/academic/tasks/${selectedTask.id}`, payload);
-
+      
       const updatedTask: Task = { 
         ...selectedTask, 
         title: editTaskData.title,
@@ -140,11 +131,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
       setTasks(tasks.map(t => t.id === selectedTask.id ? updatedTask : t));
       setSelectedTask(updatedTask);
       setIsEditingTask(false);
-      
-    } catch (error) {
-      console.error("Błąd aktualizacji:", error);
-      alert("Błąd podczas aktualizacji zadania.");
-    }
+    } catch (error) { alert("Błąd podczas aktualizacji zadania."); }
   };
 
   const openTaskModal = (task: Task) => {
@@ -152,9 +139,44 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
     setIsEditingTask(false);
   };
 
-  const closeModal = () => {
+  const openFileModal = (file: AcademicFile) => {
+    setSelectedFile(file);
+    setIsEditingFile(false);
+  };
+
+  const handleDeleteFile = async (fileId: number) => {
+    if(!confirm("Na pewno usunąć ten plik? Zostanie on usunięty również z dysku serwera.")) return;
+    try {
+      await api.delete(`/files/${fileId}`);
+      setFiles(files.filter(f => f.id !== fileId));
+      if (selectedFile?.id === fileId) {
+        setSelectedFile(null);
+        setIsEditingFile(false);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Nie udało się usunąć pliku.");
+    }
+  };
+
+  const handleUpdateFile = async () => {
+    if (!selectedFile || !editFileName.trim()) return;
+    try {
+      await api.patch(`/files/${selectedFile.id}`, { name: editFileName });
+      const updatedFile = { ...selectedFile, name: editFileName };
+      setFiles(files.map(f => f.id === selectedFile.id ? updatedFile : f));
+      setSelectedFile(updatedFile);
+      setIsEditingFile(false);
+    } catch (error) {
+      alert("Błąd podczas zmiany nazwy pliku.");
+    }
+  };
+
+  const closeAllModals = () => {
     setSelectedTask(null);
     setIsEditingTask(false);
+    setSelectedFile(null);
+    setIsEditingFile(false);
   };
 
   return (
@@ -221,19 +243,15 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                 ) : (
                   <ul className="space-y-3">
                     {files.map((file) => (
-                      <li key={file.id} className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:border-blue-300 transition-all">
-                        <button onClick={() => setExpandedFileId(expandedFileId === file.id ? null : file.id)} className="w-full flex items-center justify-between p-3 hover:bg-blue-50/30 transition-colors text-left">
-                          <span className="font-medium text-slate-700 text-sm truncate">{file.name}</span>
-                          <ChevronDown className={`w-4 h-4 shrink-0 text-slate-400 transition-transform ${expandedFileId === file.id ? 'rotate-180' : ''}`} />
-                        </button>
-                        {expandedFileId === file.id && (
-                          <div className="p-3 bg-slate-50 border-t border-slate-100 text-slate-600 text-xs">
-                            <p className="whitespace-pre-line">{file.summary || "Brak podsumowania."}</p>
-                            <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}&mode=all&fileId=${file.id}`} className="mt-3 inline-flex items-center gap-1.5 text-amber-600 hover:text-amber-800 font-semibold bg-amber-50 px-3 py-1.5 rounded border border-amber-200">
-                              <BrainCircuit className="w-3 h-3" /> Zakuwaj z tego pliku
-                            </Link>
-                          </div>
-                        )}
+                      <li 
+                        key={file.id} 
+                        onClick={() => openFileModal(file)}
+                        className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:border-blue-400 hover:shadow-md transition-all cursor-pointer group"
+                      >
+                        <div className="w-full flex items-center justify-between p-3 transition-colors text-left">
+                          <span className="font-semibold text-slate-700 text-sm truncate group-hover:text-blue-700 transition-colors">{file.name}</span>
+                          <FileText className="w-4 h-4 shrink-0 text-slate-300 group-hover:text-blue-400 transition-colors" />
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -266,12 +284,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                
-                <div 
-                  className="bg-slate-100/70 p-4 rounded-xl border border-slate-200 flex flex-col gap-3 min-h-[300px]"
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, 'TODO')}
-                >
+                <div className="bg-slate-100/70 p-4 rounded-xl border border-slate-200 flex flex-col gap-3 min-h-[300px]" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'TODO')}>
                   <h3 className="font-bold text-slate-600 text-sm flex items-center justify-between">
                     <span>Do zrobienia</span>
                     <span className="bg-slate-200 px-2 py-0.5 rounded-full text-xs">{tasks.filter(t => t.status === 'TODO').length}</span>
@@ -281,11 +294,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                   ))}
                 </div>
 
-                <div 
-                  className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col gap-3 min-h-[300px]"
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, 'IN_PROGRESS')}
-                >
+                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex flex-col gap-3 min-h-[300px]" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'IN_PROGRESS')}>
                   <h3 className="font-bold text-blue-700 text-sm flex items-center justify-between">
                     <span className="flex items-center gap-1.5"><CircleDashed className="w-4 h-4 animate-spin-slow"/> W trakcie</span>
                     <span className="bg-blue-100 px-2 py-0.5 rounded-full text-xs">{tasks.filter(t => t.status === 'IN_PROGRESS').length}</span>
@@ -295,11 +304,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                   ))}
                 </div>
 
-                <div 
-                  className="bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col gap-3 min-h-[300px]"
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, 'DONE')}
-                >
+                <div className="bg-green-50/50 p-4 rounded-xl border border-green-100 flex flex-col gap-3 min-h-[300px]" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 'DONE')}>
                   <h3 className="font-bold text-green-700 text-sm flex items-center justify-between">
                     <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4"/> Gotowe</span>
                     <span className="bg-green-100 px-2 py-0.5 rounded-full text-xs">{tasks.filter(t => t.status === 'DONE').length}</span>
@@ -308,7 +313,6 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                     <TaskCard key={task.id} task={task} onDragStart={handleDragStart} onDelete={handleDeleteTask} onView={() => openTaskModal(task)} />
                   ))}
                 </div>
-
               </div>
             </div>
           </div>
@@ -316,9 +320,8 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
       </div>
 
       {selectedTask && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in" onClick={closeModal}>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in" onClick={closeAllModals}>
           <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl relative max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            
             {!isEditingTask ? (
               <>
                 <div className="flex justify-between items-start mb-4 shrink-0 pr-16 relative">
@@ -338,7 +341,7 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                     >
                       <Edit2 className="w-5 h-5" />
                     </button>
-                    <button onClick={closeModal} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
+                    <button onClick={closeAllModals} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
                       <X className="w-5 h-5" />
                     </button>
                   </div>
@@ -352,15 +355,13 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                   }`}>
                     Status: {selectedTask.status === 'TODO' ? 'Do zrobienia' : selectedTask.status === 'IN_PROGRESS' ? 'W trakcie' : 'Zrobione'}
                   </span>
-                  
                   {selectedTask.due_date && (
                     <span className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-md border ${
                       new Date(selectedTask.due_date) < new Date() && selectedTask.status !== 'DONE' 
                       ? 'bg-red-50 text-red-700 border-red-200' 
                       : 'bg-slate-50 text-slate-600 border-slate-200'
                     }`}>
-                      <Clock className="w-3.5 h-3.5" /> 
-                      Termin: {new Date(selectedTask.due_date).toLocaleDateString('pl-PL')}
+                      <Clock className="w-3.5 h-3.5" /> Termin: {new Date(selectedTask.due_date).toLocaleDateString('pl-PL')}
                     </span>
                   )}
                 </div>
@@ -390,14 +391,12 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                       className="text-xl font-bold text-slate-800 w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
                       value={editTaskData.title}
                       onChange={(e) => setEditTaskData({...editTaskData, title: e.target.value})}
-                      placeholder="Tytuł zadania"
                     />
                   </div>
                   <button onClick={() => setIsEditingTask(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors absolute top-0 right-0">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-
                 <div className="mb-6 shrink-0">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Termin</label>
                   <input 
@@ -407,28 +406,94 @@ export default function SubjectDashboard({ params }: { params: Promise<{ id: str
                     onChange={(e) => setEditTaskData({...editTaskData, due_date: e.target.value})}
                   />
                 </div>
-
                 <div className="flex-1 flex flex-col min-h-[200px]">
                   <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Opis zadania</label>
                   <textarea 
                     className="w-full flex-1 p-3 border border-slate-300 rounded-xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-sm resize-none transition-all text-slate-700 leading-relaxed"
                     value={editTaskData.description}
                     onChange={(e) => setEditTaskData({...editTaskData, description: e.target.value})}
-                    placeholder="Wpisz szczegóły zadania..."
                   />
                 </div>
-
                 <div className="mt-6 flex justify-end gap-3 shrink-0">
-                  <button onClick={() => setIsEditingTask(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-medium text-sm transition-colors">
-                    Anuluj
-                  </button>
-                  <button onClick={handleUpdateTaskDetails} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow text-white rounded-xl font-medium text-sm transition-all">
-                    <Check className="w-4 h-4" /> Zapisz zmiany
-                  </button>
+                  <button onClick={() => setIsEditingTask(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-medium text-sm transition-colors">Anuluj</button>
+                  <button onClick={handleUpdateTaskDetails} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow text-white rounded-xl font-medium text-sm transition-all"><Check className="w-4 h-4" /> Zapisz zmiany</button>
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {selectedFile && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in" onClick={closeAllModals}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl relative max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             
+            {!isEditingFile ? (
+              <>
+                <div className="flex justify-between items-start mb-6 shrink-0 pr-16 relative">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-100 p-3 rounded-xl"><FileText className="w-6 h-6 text-blue-600" /></div>
+                    <h2 className="text-xl font-bold text-slate-800 break-words leading-tight">{selectedFile.name}</h2>
+                  </div>
+                  <div className="absolute top-0 right-0 flex items-center gap-1">
+                    <button 
+                      onClick={() => {
+                        setEditFileName(selectedFile.name);
+                        setIsEditingFile(true);
+                      }} 
+                      className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded-lg transition-colors"
+                      title="Zmień nazwę pliku"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button onClick={closeAllModals} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-5 rounded-xl border border-slate-100 overflow-y-auto flex-1 mb-6">
+                  <h3 className="font-semibold text-slate-700 text-sm flex items-center gap-2 mb-3">
+                    <AlignLeft className="w-4 h-4" /> Wygenerowane podsumowanie AI
+                  </h3>
+                  <p className="text-slate-700 text-sm whitespace-pre-wrap break-words leading-relaxed">
+                    {selectedFile.summary || <span className="italic text-slate-400">Brak podsumowania dla tego pliku.</span>}
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0">
+                  <button onClick={() => handleDeleteFile(selectedFile.id)} className="flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg font-medium transition-colors w-full sm:w-auto justify-center">
+                    <Trash2 className="w-4 h-4" /> Usuń trwale z serwera
+                  </button>
+                  <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}&mode=all&fileId=${selectedFile.id}`} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-5 py-2.5 rounded-xl font-bold transition-colors w-full sm:w-auto justify-center shadow-sm">
+                    <BrainCircuit className="w-4 h-4" /> Zakuwaj z tego pliku
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between items-start mb-6 shrink-0 pr-8 relative">
+                  <div className="w-full pr-4">
+                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Nowa nazwa pliku</label>
+                    <input 
+                      autoFocus
+                      className="text-xl font-bold text-slate-800 w-full border border-slate-300 rounded-lg p-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+                      value={editFileName}
+                      onChange={(e) => setEditFileName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateFile()}
+                    />
+                  </div>
+                  <button onClick={() => setIsEditingFile(false)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1.5 rounded-lg transition-colors absolute top-0 right-0">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="mt-4 flex justify-end gap-3 shrink-0">
+                  <button onClick={() => setIsEditingFile(false)} className="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-xl font-medium text-sm transition-colors">Anuluj</button>
+                  <button onClick={handleUpdateFile} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow text-white rounded-xl font-medium text-sm transition-all"><Check className="w-4 h-4" /> Zapisz nową nazwę</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -449,15 +514,10 @@ function TaskCard({ task, onDragStart, onDelete, onView }: { task: Task, onDragS
         <GripVertical className="w-4 h-4 text-slate-300 mt-1 shrink-0" />
         <div className="flex-1 overflow-hidden">
           <h4 className="font-bold text-slate-800 text-sm leading-tight line-clamp-2 break-words">{task.title}</h4>
-          
-          {task.description && (
-            <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 break-words">{task.description}</p>
-          )}
-          
+          {task.description && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 break-words">{task.description}</p>}
           {task.due_date && (
             <div className={`mt-3 inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold ${new Date(task.due_date) < new Date() && task.status !== 'DONE' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-100 text-slate-600'}`}>
-              <Clock className="w-3 h-3" /> 
-              {new Date(task.due_date).toLocaleDateString('pl-PL')}
+              <Clock className="w-3 h-3" /> {new Date(task.due_date).toLocaleDateString('pl-PL')}
             </div>
           )}
         </div>
