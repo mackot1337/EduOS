@@ -15,6 +15,17 @@ router = APIRouter(prefix="/flashcards", tags=["Flashcards & Review"])
 class FlashcardReviewRequest(BaseModel):
     recall_quality: int
 
+class FlashcardCreate(BaseModel):
+    question: str
+    answer: str
+    file_id: Optional[int] = None
+
+class FlashcardUpdate(BaseModel):
+    question: Optional[str] = None
+    answer: Optional[str] = None
+
+
+
 @router.get("/due/{subject_id}")
 async def get_due_flashcards(subject_id: int, db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -102,3 +113,54 @@ async def review_flashcard(
         "new_level": new_level,
         "next_review": next_date.isoformat()
     }
+
+@router.post("/subjects/{subject_id}", status_code=status.HTTP_201_CREATED)
+async def create_flashcard(subject_id: int, flashcard: FlashcardCreate, db: AsyncSession = Depends(get_db)):
+    new_flashcard = Flashcard(
+        subject_id=subject_id,
+        file_id=flashcard.file_id,
+        question=flashcard.question,
+        answer=flashcard.answer,
+        level=0,
+        next_review=None
+    )
+    db.add(new_flashcard)
+    await db.commit()
+    await db.refresh(new_flashcard)
+    
+    return {
+        "id": new_flashcard.id,
+        "pytanie": new_flashcard.question,
+        "odpowiedz": new_flashcard.answer,
+        "poziom": new_flashcard.level
+    }
+
+@router.patch("/{flashcard_id}")
+async def update_flashcard(flashcard_id: int, flashcard_update: FlashcardUpdate, db: AsyncSession = Depends(get_db)):
+    query = select(Flashcard).where(Flashcard.id == flashcard_id)
+    result = await db.execute(query)
+    flashcard = result.scalars().first()
+    
+    if not flashcard:
+        raise HTTPException(status_code=404, detail="Fiszka nie znaleziona")
+        
+    if flashcard_update.question is not None:
+        flashcard.question = flashcard_update.question
+    if flashcard_update.answer is not None:
+        flashcard.answer = flashcard_update.answer
+        
+    await db.commit()
+    return {"status": "success", "message": "Fiszka została zaktualizowana"}
+
+@router.delete("/{flashcard_id}")
+async def delete_flashcard(flashcard_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(Flashcard).where(Flashcard.id == flashcard_id)
+    result = await db.execute(query)
+    flashcard = result.scalars().first()
+    
+    if not flashcard:
+        raise HTTPException(status_code=404, detail="Fiszka nie znaleziona")
+        
+    await db.delete(flashcard)
+    await db.commit()
+    return {"status": "success", "message": "Fiszka została usunięta"}
