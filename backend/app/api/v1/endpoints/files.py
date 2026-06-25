@@ -10,6 +10,8 @@ from app.models.academic import AcademicFile, Task, TaskStatus
 from app.models.ai import FileChunk, Flashcard
 from app.services.ai_processor import AIProcessor
 
+from fastapi.responses import FileResponse
+
 router = APIRouter(prefix="/files", tags=["Files & AI Processing"])
 
 STORAGE_DIR = "storage"
@@ -151,3 +153,27 @@ async def delete_file(file_id: int, db: AsyncSession = Depends(get_db)):
     await db.delete(file_obj)
     await db.commit()
     return {"message": "Plik usunięty z bazy i z dysku"}
+
+@router.get("/{file_id}/download")
+async def download_file(file_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(AcademicFile).where(AcademicFile.id == file_id))
+    file_obj = result.scalars().first()
+    
+    if not file_obj:
+        raise HTTPException(status_code=404, detail="Plik nie znaleziony w bazie danych")
+        
+    if not file_obj.file_path or not os.path.exists(file_obj.file_path):
+        raise HTTPException(status_code=404, detail="Plik fizycznie nie istnieje na serwerze")
+        
+    _, ext = os.path.splitext(file_obj.file_path)
+    
+    safe_filename = file_obj.name
+    if not safe_filename.lower().endswith(ext.lower()):
+        safe_filename += ext
+        
+    return FileResponse(
+        path=file_obj.file_path, 
+        filename=safe_filename,
+        media_type="application/octet-stream",
+        headers={"Access-Control-Expose-Headers": "Content-Disposition"}
+    )
