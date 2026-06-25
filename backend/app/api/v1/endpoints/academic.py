@@ -178,13 +178,22 @@ class TaskResponse(TaskBase):
     
     model_config = ConfigDict(from_attributes=True)
 
-@router.post("/semesters/{subject_id}/tasks", response_model=TaskResponse)
+@router.post("/subjects/{subject_id}/tasks", response_model=TaskResponse)
 async def create_task(subject_id: int, task: TaskCreate, db: AsyncSession = Depends(get_db)):
     new_task = Task(**task.model_dump(), subject_id=subject_id)
     db.add(new_task)
     await db.commit()
     await db.refresh(new_task)
     return new_task
+
+@router.get("/tasks/{task_id}", response_model=TaskResponse)
+async def get_task(task_id: int, db: AsyncSession = Depends(get_db)):
+    query = select(Task).where(Task.id == task_id)
+    result = await db.execute(query)
+    task = result.scalars().first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Zadanie nie znalezione")
+    return task
 
 @router.get("/subjects/{subject_id}/tasks", response_model=List[TaskResponse])
 async def get_tasks(subject_id: int, db: AsyncSession = Depends(get_db)):
