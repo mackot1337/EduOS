@@ -6,7 +6,18 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
-    
+    environment:
+      - DB_HOST=eduos-db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - eduos-db
+    volumes:
+      - hf_cache:/root/.cache/huggingface
+
   frontend:
     build: ./frontend
     ports:
@@ -27,3 +38,4 @@ services:
 
 volumes:
   eduos_postgres_data:
+  hf_cache:
