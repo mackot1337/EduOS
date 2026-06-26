@@ -31,6 +31,18 @@ class DocumentAnalysisResult(BaseModel):
     deadlines: List[ExtractedDeadline]
     flashcards: List[ExtractedFlashcard]
 
+class QuizOption(BaseModel):
+    text: str
+    is_correct: bool
+
+class QuizQuestion(BaseModel):
+    question: str
+    options: List[QuizOption]
+    explanation: str
+
+class QuizData(BaseModel):
+    questions: List[QuizQuestion]
+
 class AIProcessor:
     @staticmethod
     def extract_text_from_pdf(file_bytes: bytes) -> str:
@@ -79,6 +91,32 @@ class AIProcessor:
                 response_mime_type="application/json",
                 response_schema=DocumentAnalysisResult,
                 temperature=0.2
+            ),
+        )
+        return response.parsed
+    
+    @classmethod
+    async def generate_quiz_from_text(cls, full_text: str, num_questions: int = 5) -> QuizData:
+        prompt = f"""
+        Jesteś wymagającym, ale pomocnym nauczycielem akademickim. 
+        Na podstawie poniższego materiału wygeneruj quiz składający się z {num_questions} pytań testowych.
+        
+        Wymagania:
+        1. Każde pytanie musi mieć dokładnie 4 opcje odpowiedzi.
+        2. Dokładnie JEDNA opcja musi być poprawna (is_correct = true), a trzy błędne (is_correct = false).
+        3. Dodaj krótkie, edukacyjne wyjaśnienie (explanation) tłumaczące, dlaczego poprawna odpowiedź jest poprawna, powołując się na tekst.
+        
+        Materiał do analizy:
+        {full_text[:30000]} 
+        """
+
+        response = ai_client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=QuizData,
+                temperature=0.3
             ),
         )
         return response.parsed
