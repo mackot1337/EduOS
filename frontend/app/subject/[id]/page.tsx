@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { 
   ArrowLeft, Library, FileText, UploadCloud, BookOpen, Search, Loader2, 
   BrainCircuit, ChevronDown, MapPin, Clock, Plus, GripVertical, Trash2, 
-  CheckCircle2, CircleDashed, X, AlignLeft, Edit2, Check, Download
+  CheckCircle2, CircleDashed, X, AlignLeft, Edit2, Check, Download, FileQuestion
 } from 'lucide-react';
 
 interface AcademicFile {
@@ -507,6 +507,9 @@ function SubjectContent({ params }: { params: Promise<{ id: string }> }) {
                     </button>
                     <Link href={`/study?subjectId=${subjectId}&name=${encodeURIComponent(subjectName)}&mode=all&fileId=${selectedFile.id}`} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-5 py-2.5 rounded-xl font-bold transition-colors w-full sm:w-auto justify-center shadow-sm">
                       <BrainCircuit className="w-4 h-4" /> Zakuwaj z AI
+                    </Link>
+                    <Link href={`/quiz/${selectedFile?.id}`} className="flex items-center gap-2 text-sm text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-5 py-2.5 rounded-xl font-bold transition-colors w-full sm:w-auto justify-center shadow-sm">
+                      <FileQuestion className="w-4 h-4" /> Rozwiąż Quiz
                     </Link>
                   </div>
                 </div>
