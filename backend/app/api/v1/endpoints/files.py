@@ -8,9 +8,11 @@ from sqlalchemy.future import select
 from app.core.database import get_db
 from app.models.academic import AcademicFile, Task, TaskStatus
 from app.models.ai import FileChunk, Flashcard
-from app.services.ai_processor import AIProcessor
+from app.services.ai_processor import AIProcessor, QuizData
 
 from fastapi.responses import FileResponse
+
+from sqlalchemy.orm import selectinload
 
 router = APIRouter(prefix="/files", tags=["Files & AI Processing"])
 
@@ -177,3 +179,21 @@ async def download_file(file_id: int, db: AsyncSession = Depends(get_db)):
         media_type="application/octet-stream",
         headers={"Access-Control-Expose-Headers": "Content-Disposition"}
     )
+
+@router.post("/{file_id}/generate-quiz", response_model=QuizData)
+async def generate_file_quiz(file_id: int, num_questions: int = 5, db: AsyncSession = Depends(get_db)):
+    query = select(AcademicFile).where(AcademicFile.id == file_id).options(selectinload(AcademicFile.chunks))
+    result = await db.execute(query)
+    academic_file = result.scalars().first()
+    
+    if not academic_file:
+        raise HTTPException(status_code=404, detail="Plik nie znaleziony")
+        
+    if not academic_file.chunks:
+        raise HTTPException(status_code=400, detail="Plik nie został jeszcze przetworzony (brak tekstu)")
+
+    full_text = "\n".join([chunk.text_fragment for chunk in academic_file.chunks])
+    
+    quiz_data = await AIProcessor.generate_quiz_from_text(full_text, num_questions)
+    
+    return quiz_data
