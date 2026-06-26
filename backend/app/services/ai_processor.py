@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 from google import genai
 from google.genai import types
 
-load_dotenv(dotenv_path="../.env")
+load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 ai_client = genai.Client(api_key=API_KEY)
