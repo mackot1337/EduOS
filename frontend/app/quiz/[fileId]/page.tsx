@@ -31,6 +31,8 @@ export default function QuizPage() {
   
   const [isQuizStarted, setIsQuizStarted] = useState(false);
   const [numQuestions, setNumQuestions] = useState(5);
+
+  const [forceNew, setForceNew] = useState(false); 
   const [loading, setLoading] = useState(false);
   
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -48,7 +50,7 @@ export default function QuizPage() {
     setIsQuizStarted(true);
 
     try {
-      const response = await api.post(`/files/${fileId}/generate-quiz?num_questions=${numQuestions}`);
+      const response = await api.post(`/files/${fileId}/generate-quiz?num_questions=${numQuestions}&force_new=${forceNew}`);
       setQuizData(response.data);
     } catch (error: any) {
       const errorDetail = error.response?.data?.detail;
@@ -80,6 +82,19 @@ export default function QuizPage() {
               onChange={(e) => setNumQuestions(parseInt(e.target.value) || 5)}
               className="w-full text-center text-2xl font-bold p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-purple-500 transition-colors"
             />
+          </div>
+
+          <div className="flex items-center gap-2 text-sm text-slate-500 justify-center mt-4">
+            <input 
+              type="checkbox" 
+              id="forceNew" 
+              checked={forceNew} 
+              onChange={(e) => setForceNew(e.target.checked)}
+              className="w-4 h-4 accent-purple-600 rounded cursor-pointer"
+            />
+            <label htmlFor="forceNew" className="cursor-pointer select-none">
+              Wygeneruj zupełnie nowe pytania (pomiń pamięć)
+            </label>
           </div>
 
           <div className="flex gap-4 justify-center pt-4">
