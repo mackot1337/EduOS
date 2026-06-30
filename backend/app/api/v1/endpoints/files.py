@@ -17,6 +17,7 @@ from sqlalchemy.orm import selectinload
 router = APIRouter(prefix="/files", tags=["Files & AI Processing"])
 
 STORAGE_DIR = "storage"
+QUIZ_CACHE = {}
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
@@ -181,7 +182,18 @@ async def download_file(file_id: int, db: AsyncSession = Depends(get_db)):
     )
 
 @router.post("/{file_id}/generate-quiz", response_model=QuizData)
-async def generate_file_quiz(file_id: int, num_questions: int = 5, db: AsyncSession = Depends(get_db)):
+async def generate_file_quiz(
+    file_id: int, 
+    num_questions: int = 5, 
+    force_new: bool = False,
+    db: AsyncSession = Depends(get_db)
+):
+    cache_key = f"{file_id}_{num_questions}"
+    
+    if not force_new and cache_key in QUIZ_CACHE:
+        print(f"Zwracam quiz z cache dla klucza: {cache_key}")
+        return QUIZ_CACHE[cache_key]
+
     query = select(AcademicFile).where(AcademicFile.id == file_id).options(selectinload(AcademicFile.chunks))
     result = await db.execute(query)
     academic_file = result.scalars().first()
@@ -194,6 +206,9 @@ async def generate_file_quiz(file_id: int, num_questions: int = 5, db: AsyncSess
 
     full_text = "\n".join([chunk.text_fragment for chunk in academic_file.chunks])
     
+    print(f"Generuję nowy quiz dla klucza: {cache_key}...")
     quiz_data = await AIProcessor.generate_quiz_from_text(full_text, num_questions)
+    
+    QUIZ_CACHE[cache_key] = quiz_data
     
     return quiz_data
