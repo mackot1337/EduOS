@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -24,13 +24,13 @@ interface QuizData {
 export default function QuizPage() {
   const params = useParams();
   const router = useRouter();
+  
   const fileId = params.fileId || params.id;
 
   const [quizData, setQuizData] = useState<QuizData | null>(null);
   
   const [isQuizStarted, setIsQuizStarted] = useState(false);
   const [numQuestions, setNumQuestions] = useState(5);
-  
   const [loading, setLoading] = useState(false);
   
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -96,8 +96,8 @@ export default function QuizPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-        <p className="text-slate-600 font-medium animate-pulse">Sztuczna inteligencja układa pytania z Twoich notatek...</p>
+        <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
+        <p className="text-slate-600 font-medium animate-pulse">Sztuczna inteligencja układa {numQuestions} pytań z Twoich notatek...</p>
       </div>
     );
   }
@@ -113,7 +113,7 @@ export default function QuizPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
         <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-sm border text-center space-y-6">
-          <BrainCircuit className="w-16 h-16 text-blue-500 mx-auto" />
+          <BrainCircuit className="w-16 h-16 text-purple-500 mx-auto" />
           <h1 className="text-3xl font-bold text-slate-800">Koniec Quizu!</h1>
           <p className="text-lg text-slate-600">Twój wynik: <b>{score}</b> z <b>{quizData.questions.length}</b> ({percentage}%)</p>
           <div className="flex gap-4 justify-center pt-4">
@@ -153,7 +153,7 @@ export default function QuizPage() {
         </div>
         <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
           <div 
-            className="bg-blue-600 h-full transition-all duration-300" 
+            className="bg-purple-600 h-full transition-all duration-300" 
             style={{ width: `${((currentIndex) / quizData.questions.length) * 100}%` }}
           />
         </div>
@@ -163,7 +163,7 @@ export default function QuizPage() {
 
           <div className="space-y-3">
             {question.options.map((opt, idx) => {
-              let bgColor = "bg-white border-slate-200 hover:border-blue-400 hover:bg-blue-50";
+              let bgColor = "bg-white border-slate-200 hover:border-purple-400 hover:bg-purple-50";
               let textColor = "text-slate-700";
               let Icon = null;
 
@@ -196,14 +196,14 @@ export default function QuizPage() {
           </div>
 
           {isAnswered && (
-            <div className="mt-8 p-5 bg-blue-50 border border-blue-100 rounded-xl animate-in fade-in slide-in-from-bottom-4">
-              <h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
+            <div className="mt-8 p-5 bg-purple-50 border border-purple-100 rounded-xl animate-in fade-in slide-in-from-bottom-4">
+              <h3 className="font-bold text-purple-900 mb-2 flex items-center gap-2">
                 <BrainCircuit className="w-5 h-5"/> Dlaczego tak jest?
               </h3>
-              <p className="text-blue-800 leading-relaxed">{question.explanation}</p>
+              <p className="text-purple-800 leading-relaxed">{question.explanation}</p>
               
               <div className="mt-6 flex justify-end">
-                <Button onClick={handleNext} size="lg" className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button onClick={handleNext} size="lg" className="bg-purple-600 hover:bg-purple-700 text-white">
                   Następne pytanie <ArrowRight className="w-4 h-4 ml-2"/>
                 </Button>
               </div>
