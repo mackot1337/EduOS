@@ -24,29 +24,74 @@ interface QuizData {
 export default function QuizPage() {
   const params = useParams();
   const router = useRouter();
-  const fileId = params.fileId as string;
+  const fileId = params.fileId || params.id;
 
   const [quizData, setQuizData] = useState<QuizData | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  const [isQuizStarted, setIsQuizStarted] = useState(false);
+  const [numQuestions, setNumQuestions] = useState(5);
+  
+  const [loading, setLoading] = useState(false);
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionIdx, setSelectedOptionIdx] = useState<number | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
 
-  useEffect(() => {
-    const generateQuiz = async () => {
-      try {
-        const response = await api.post(`/files/${fileId}/generate-quiz?num_questions=5`);
-        setQuizData(response.data);
-      } catch (error: any) {
-        alert("Nie udało się wygenerować quizu: " + (error.response?.data?.detail || error.message));
-      } finally {
-        setLoading(false);
-      }
-    };
-    generateQuiz();
-  }, [fileId]);
+  const handleStartQuiz = async () => {
+    if (numQuestions < 1 || numQuestions > 20) {
+      alert("Wybierz od 1 do 20 pytań.");
+      return;
+    }
+
+    setLoading(true);
+    setIsQuizStarted(true);
+
+    try {
+      const response = await api.post(`/files/${fileId}/generate-quiz?num_questions=${numQuestions}`);
+      setQuizData(response.data);
+    } catch (error: any) {
+      const errorDetail = error.response?.data?.detail;
+      const errorMessage = typeof errorDetail === 'object' 
+        ? JSON.stringify(errorDetail, null, 2) 
+        : (errorDetail || error.message);
+        
+      alert("Błąd generowania quizu:\n" + errorMessage);
+      setIsQuizStarted(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isQuizStarted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center space-y-6">
+          <BrainCircuit className="w-16 h-16 text-purple-500 mx-auto" />
+          <h1 className="text-3xl font-bold text-slate-800">Ustawienia Quizu</h1>
+          <p className="text-slate-600">Z ilu pytań chcesz zostać przepytany przez AI z tego materiału?</p>
+          
+          <div className="flex flex-col gap-2 max-w-[200px] mx-auto">
+            <input 
+              type="number" 
+              min="1" 
+              max="20"
+              value={numQuestions}
+              onChange={(e) => setNumQuestions(parseInt(e.target.value) || 5)}
+              className="w-full text-center text-2xl font-bold p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-purple-500 transition-colors"
+            />
+          </div>
+
+          <div className="flex gap-4 justify-center pt-4">
+            <Button variant="outline" onClick={() => router.back()}>Wróć</Button>
+            <Button onClick={handleStartQuiz} className="bg-purple-600 hover:bg-purple-700 text-white">
+              Generuj Quiz
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
